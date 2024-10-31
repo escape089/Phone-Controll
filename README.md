@@ -13,6 +13,7 @@ This program uses ADB commands within a Windows application to create backups of
 - App manager to install/uninstall, grant/remove permissions, and more.
 - Change or remove the password/PIN.
 - Information about the phone.
+- Complete removal of the screen lock (For root users only)
 - File explorer for copying or pasting.
 - Editor for .txt files.
 - Compression options.

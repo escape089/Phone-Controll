@@ -27,6 +27,32 @@ ADB_URL = "https://dl.google.com/android/repository/platform-tools-latest-window
 ADB_FOLDER = "platform-tools"
 adb_path = r"platform-tools\adb.exe"
 
+class ProgramRestarter:
+    def __init__(self, program_path):
+        self.program_path = program_path
+        self.program_name = os.path.basename(program_path)
+
+    def is_program_running(self):
+        """Überprüfen, ob das Programm läuft."""
+        for process in psutil.process_iter(['name']):
+            if process.info['name'] == self.program_name:
+                return True
+        return False
+
+    def restart_program(self):
+        """Starte das Programm neu, wenn es bereits läuft."""
+        if self.is_program_running():
+            for process in psutil.process_iter(['name']):
+                if process.info['name'] == self.program_name:
+                    print(f"{self.program_name} läuft bereits und wird beendet.")
+                    process.terminate()  # Beenden des laufenden Prozesses
+                    process.wait()  # Warten, bis der Prozess beendet ist
+            
+            print(f"Starte {self.program_name} neu...")
+            subprocess.Popen([self.program_path])  # Starte das Programm neu
+        else:
+            print(f"{self.program_name} läuft nicht. Kein Neustart erforderlich.")
+            return False  # Programm ist nicht gestartet
 
 
 def load_main_program():
@@ -260,7 +286,8 @@ class TWRPBackupRestoreApp:
 
         ## Busybox Backup ##################################################################################################
 
-
+        self.program_path = 'Data.exe'  # Pfad zu deinem externen Programm
+        self.restarter = ProgramRestarter(self.program_path)
         
 
         self.ddbackupbox = tk.Listbox(self.backup_dd_frame, selectmode=tk.MULTIPLE, height=10, bg="black", fg="White")
@@ -327,8 +354,15 @@ class TWRPBackupRestoreApp:
         self.scrollbar = tk.Scrollbar(self.delete_all_frame)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.listbox_apks = tk.Listbox(self.delete_all_frame, yscrollcommand=self.scrollbar.set, selectmode=tk.MULTIPLE)
-        self.listbox_apks.place(relx=0.01, rely=0.2, relwidth=0.95, relheight=0.6)
+
+
+        # Treeview erstellen und an Scrollbar binden
+        self.listbox_apks = ttk.Treeview(self.delete_all_frame, columns=('Package Name',), show='headings', yscrollcommand=self.scrollbar.set)
+        self.listbox_apks.place(rely=0.15, relx=0.05, relheight=0.65, relwidth=0.9)
+
+        # Überschrift und Breite der einzigen Spalte konfigurieren
+        self.listbox_apks.heading('Package Name', text='Package Name')
+        self.listbox_apks.column('Package Name', width=20)  # Setzt die Breite der Spalte
 
         self.scrollbar.config(command=self.listbox_apks.yview)
 
@@ -479,7 +513,7 @@ class TWRPBackupRestoreApp:
         self.install_button = tk.Button(self.buttons, text="", command=self.start_installation)
         self.install_button.place(relx=0.2, rely=0.4)
 
-        self.apk_install_frame = tk.Button(self.install_frame, text="", command=self.install_apk)
+        self.apk_install_frame = tk.Button(self.install_frame, text="", command=self.start_flashing_process)
         self.apk_install_frame.place(relx=0.2, rely=0.25)
 
         self.select_flash_file_button = tk.Button(self.fastboot_frame, text="", command=self.select_flash_file)
@@ -813,7 +847,7 @@ class TWRPBackupRestoreApp:
         self.language_dropdown.bind("<<ComboboxSelected>>", self.change_language)
         
         self.language_dropdown.place(relx=0.01, rely=0.9)
-        self.switch_language()
+        
 
         
         for partition in self.partitions:
@@ -831,12 +865,125 @@ class TWRPBackupRestoreApp:
         self.files_to_delete = ["/data/systm/password.key", "/data/system/pattern.key", "/data/system/locksettings.db", "/data/system/locksettings.db-journal", "/data/system/locksettings.db-shm", 
                                 "/data/system/locksettings.db-wal", "/data/system/gesture.key",
                                 "/data/systemgatekeeper.pin.key", "/data/system/gatekeeper.pattern.key", "/data/system/*.key", "/data/system/applockpin.key"]  # Hier Dateipfade anpassen
+        self.update_texts()
+        
 
 
     ############# BATTERIE ###############
 
 
     # Callback-Funktion für den Mausklick
+
+    def start_flashing_process(self):
+        """Starte den gesamten Flash-Prozess in einem Hintergrund-Thread."""
+        threading.Thread(target=self.flash_zip_in_recovery, daemon=True).start()
+
+    def flash_zip_in_recovery(self):
+        """Überprüfen, ob das Gerät im Recovery-Modus ist, und gegebenenfalls neu starten."""
+        recovery_mode_detected = False
+
+        while not recovery_mode_detected:
+            try:
+                # Prüfen, ob das Gerät im Recovery-Modus ist
+                command = "adb shell getprop ro.boot.mode"
+                boot_mode = subprocess.check_output(command, shell=True).decode('utf-8').strip()
+
+                if boot_mode == "":
+                    self.console_output.insert(tk.END, "Das Gerät ist jetzt im Recovery-Modus.\n")
+                    recovery_mode_detected = True
+                    break  # Beende die Schleife, wenn der Recovery-Modus erkannt wird
+
+                else:
+                    self.console_output.insert(tk.END, "Das Gerät ist nicht im Recovery-Modus. Starte im Recovery...\n")
+                    subprocess.run("adb reboot recovery", shell=True)
+                    self.console_output.insert(tk.END, "Bitte warten Sie, bis das Gerät neu gestartet ist...\n")
+                    time.sleep(15)  # Warte, damit das Gerät Zeit hat, neu zu starten
+                    continue  # Überprüfe weiter, ohne die Schleife zu beenden
+
+            except subprocess.CalledProcessError:
+                # Ignoriere den Fehler und mache mit der nächsten Überprüfung weiter
+                self.console_output.insert(tk.END, "Fehler beim Abrufen des Boot-Modus. Überprüfe erneut...\n")
+                time.sleep(5)  # Überprüfen alle 5 Sekunden
+
+        if recovery_mode_detected:
+            self.select_zip_file()
+
+    def select_zip_file(self):
+        """Wähle die ZIP-Datei aus, die geflasht werden soll."""
+        zip_file = filedialog.askopenfilename(title="Wählen Sie die ZIP-Datei zum Flashen aus", filetypes=[("ZIP files", "*.zip")])
+        if zip_file:
+            self.copy_and_flash(zip_file)
+
+    def copy_and_flash(self, zip_file):
+        """Kopiert die ZIP-Datei auf das Gerät und flasht sie."""
+        try:
+            # Pfad zur ZIP-Datei bestimmen
+            zip_file_name = zip_file.split('/')[-1]
+            destination_path = f"/sdcard/{zip_file_name}"
+
+            self.format_data()
+
+            # Kopiere die ZIP-Datei auf das Gerät
+            self.console_output.insert(tk.END, f"Kopiere {zip_file_name} auf das Gerät...\n")
+            subprocess.run(f"adb push \"{zip_file}\" \"{destination_path}\"", shell=True)
+
+            # Flashen der ZIP-Datei über TWRP
+            self.console_output.insert(tk.END, f"Flashe {zip_file_name}...\n")
+            subprocess.run(f"adb shell twrp install \"{destination_path}\"", shell=True)
+
+            self.console_output.insert(tk.END, "Flashing abgeschlossen!\n")
+
+        except subprocess.CalledProcessError as e:
+            self.console_output.insert(tk.END, f"Fehler beim Kopieren oder Flashen der Datei: {e}\n")
+        except Exception as e:
+            self.console_output.insert(tk.END, f"Ein Fehler ist aufgetreten: {str(e)}\n")
+
+    def open_toplevel(self):
+        # Toplevel-Fenster erstellen
+        toplevel = tk.Toplevel(self.root)
+        toplevel.title("Toplevel Fenster")
+        toplevel.geometry("300x300")
+
+        # Stil für die Buttons
+        style = ttk.Style()
+        style.configure("TButton", font=("Helvetica", 12), padding=10)
+
+        # Buttons erstellen
+        button1 = ttk.Button(toplevel, text="Flash again", command=self.start_flashing_process)
+        button2 = ttk.Button(toplevel, text="Reboot", command=self.reboot_to_OS)
+        button3 = ttk.Button(toplevel, text="Format Data", command=self.format_data)
+        button4 = ttk.Button(toplevel, text="Wipe dalvik/cache", command=self.format_dalvik)
+
+        # Buttons anordnen
+        button1.pack(pady=10, padx=20, fill=tk.X)
+        button2.pack(pady=10, padx=20, fill=tk.X)
+        button3.pack(pady=10, padx=20, fill=tk.X)
+        button4.pack(pady=10, padx=20, fill=tk.X)
+
+    def format_data(self):
+        # Bestätigungsdialog
+        if messagebox.askyesno("Empfohlen", "Sie sollten die Daten vor dem Flashen Formatieren"):
+            try:
+                # ADB Befehl zum Formatieren der Datenpartition
+               
+                subprocess.run(f"adb shell twrp format /data", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                # Erfolgreich informiert
+                messagebox.showinfo("Erfolg", "Die Datenpartition wurde erfolgreich formatiert.")
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Fehler beim Formatieren der Datenpartition: {e}")
+
+    def format_dalvik(self):
+        # Bestätigungsdialog
+        
+            try:
+                # ADB Befehl zum Formatieren der Datenpartition
+               
+                subprocess.run(f"adb shell twrp format /dalvik", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                subprocess.run(f"adb shell twrp format /cache", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                # Erfolgreich informiert
+                messagebox.showinfo("Erfolg", "Die Datenpartition wurde erfolgreich formatiert.")
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Fehler beim Formatieren der Datenpartition: {e}")
 
 
     def load_language_setting(self):
@@ -867,140 +1014,141 @@ class TWRPBackupRestoreApp:
         # Sprache basierend auf Auswahl im Dropdown wechseln
         self.language_code = self.language_var.get()
         self.texts = self.get_texts(self.language_code)
-        self.update_texts()  # Texte aktualisieren
+          # Texte aktualisieren
         self.save_language_setting()  # Spracheinstellung speichern
         
     
     def update_texts(self):
 
-        # Texte der UI-Elemente basierend auf `self.texts` aktualisieren
-        self.safe_info.config(text=self.texts["safe_btn"])
-        self.device_info_frame.config(text=self.texts["device_info_frame"])
-        self.execute_restore_button.config(text=self.texts["execute_restore_button"])
-        self.restore_button.config(text=self.texts["restore_button"])
-        self.backup_button.config(text=self.texts["backup_button"])
-        self.open_twrp_frame.config(text=self.texts["backup_restore_button"])
-        self.restore_frame.config(text=self.texts["restore_frame"])
-        self.scroll_area_partitions.config(text=self.texts["scroll_area_partitions"])
-        self.partition_flash_frame.config(text=self.texts["partition_flash_frame"])
-        self.Reboot_to_bootlaoder.config(text=self.texts["Reboot_to_bootloader"])
-        self.Reboot_to_fastboot.config(text=self.texts["Reboot_to_fastboot"])
-        self.Reboot_to_Recovery.config(text=self.texts["Reboot_to_Recovery"])
-        self.Reboot_to_OS.config(text=self.texts["Reboot_to_OS"])
-        self.remove_password_button.config(text=self.texts["remove_password_button"])
-        self.remove_password_label.config(text=self.texts["remove_password_label"])
-        self.get_info_button.config(text=self.texts["get_info_button"])
-        self.save_info_button.config(text=self.texts["save_info_button"])
-        self.start_flash_button.config(text=self.texts["start_flash_button"])
-        self.select_flash_file_button.config(text=self.texts["select_flash_file_button"])
-        self.apk_install_frame.config(text=self.texts["install_apk_button"])
-        self.install_button.config(text=self.texts["install_adb_button"])
-        self.open_install.config(text=self.texts["open_install"])
-        self.open_install_frame.config(text=self.texts["open_install_frame"])
-        self.open_settings_frame.config(text=self.texts["settings_button"])
-        self.open_backup_frame.config(text=self.texts["backup_restore_button"])
-        self.open_delete_apps_frame.config(text=self.texts["apps_button"])
-        self.open_opti_frame.config(text=self.texts["phone_settings_button"])
-        self.open_propp_frame.config(text=self.texts["properties_button"])
-        self.open_lockscreen_frame.config(text=self.texts["lockscreen_button"])
-        self.restore_dd_button.config(text=self.texts["restore_partitions_button"])
-        self.save_dd_button.config(text=self.texts["save_partitions_button"])
-        self.open_dd_frame.config(text=self.texts["backup_root_button"])
+        try:
+            # Texte der UI-Elemente basierend auf `self.texts` aktualisieren
+            self.safe_info.config(text=self.texts["safe_btn"])
+            self.device_info_frame.config(text=self.texts["device_info_frame"])
+            self.execute_restore_button.config(text=self.texts["execute_restore_button"])
+            self.restore_button.config(text=self.texts["restore_button"])
+            self.backup_button.config(text=self.texts["backup_button"])
+            self.open_twrp_frame.config(text=self.texts["backup_restore_button"])
+            self.restore_frame.config(text=self.texts["restore_frame"])
+            self.scroll_area_partitions.config(text=self.texts["scroll_area_partitions"])
+            self.partition_flash_frame.config(text=self.texts["partition_flash_frame"])
+            self.Reboot_to_bootlaoder.config(text=self.texts["Reboot_to_bootloader"])
+            self.Reboot_to_fastboot.config(text=self.texts["Reboot_to_fastboot"])
+            self.Reboot_to_Recovery.config(text=self.texts["Reboot_to_Recovery"])
+            self.Reboot_to_OS.config(text=self.texts["Reboot_to_OS"])
+            self.remove_password_button.config(text=self.texts["remove_password_button"])
+            self.remove_password_label.config(text=self.texts["remove_password_label"])
+            self.get_info_button.config(text=self.texts["get_info_button"])
+            self.save_info_button.config(text=self.texts["save_info_button"])
+            self.start_flash_button.config(text=self.texts["start_flash_button"])
+            self.select_flash_file_button.config(text=self.texts["select_flash_file_button"])
+            self.apk_install_frame.config(text=self.texts["install_apk_button"])
+            self.install_button.config(text=self.texts["install_adb_button"])
+            self.open_install.config(text=self.texts["open_install"])
+            self.open_install_frame.config(text=self.texts["open_install_frame"])
+            self.open_settings_frame.config(text=self.texts["settings_button"])
+            self.open_backup_frame.config(text=self.texts["backup_restore_button"])
+            self.open_delete_apps_frame.config(text=self.texts["apps_button"])
+            self.open_opti_frame.config(text=self.texts["phone_settings_button"])
+            self.open_propp_frame.config(text=self.texts["properties_button"])
+            self.open_lockscreen_frame.config(text=self.texts["lockscreen_button"])
+            self.restore_dd_button.config(text=self.texts["restore_partitions_button"])
+            self.save_dd_button.config(text=self.texts["save_partitions_button"])
+            self.open_dd_frame.config(text=self.texts["backup_root_button"])
 
-        self.APP_action = [
+            self.APP_action = [
 
-            self.texts['App Installieren'],
-            self.texts['App Löschen'],
-            self.texts['App Starten'],
-            self.texts['App Stoppen'],
-            self.texts['Cache löschen'],
-            self.texts['Daten löschen'],
+                self.texts['App Installieren'],
+                self.texts['App Löschen'],
+                self.texts['App Starten'],
+                self.texts['App Stoppen'],
+                self.texts['Cache löschen'],
+                self.texts['Daten löschen'],
 
-        ]
+            ]
 
-        self.List_action = [
-            self.texts['Nur Benutzer APPS'],
-            self.texts['Nur System APPS'],
-            self.texts['Alle APPS'],
+            self.List_action = [
+                self.texts['Nur Benutzer APPS'],
+                self.texts['Nur System APPS'],
+                self.texts['Alle APPS'],
 
-        ]
+            ]
 
-        self.Backup_options = [
-            self.texts['Sichere alle APPS'],
-            self.texts['Sichere ausgewählte APPS'],
-            
+            self.Backup_options = [
+                self.texts['Sichere alle APPS'],
+                self.texts['Sichere ausgewählte APPS'],
+                
 
-        ]
+            ]
 
-        self.permissions = [
-            self.texts['Kamera'],
-            self.texts['Mikrofon'],
-            self.texts['Speicher lesen'],
-            self.texts['Speicher schreiben'],
-            self.texts['Feiner Standort'],
-            self.texts['Grob Standort'],
-            self.texts['SMS senden'],
-            self.texts['SMS empfangen'],
-            self.texts['Internet'],
-            self.texts['Kontakte lesen'],
-            self.texts['Kontakte schreiben'],
-            self.texts['Anrufliste lesen'],
-            self.texts['Anrufliste schreiben'],
-            self.texts['Telefonstatus lesen'],
-            self.texts['Anrufe tätigen'],
-            self.texts['Ausgehende Anrufe verarbeiten'],
-            self.texts['Körpersensoren'],
-            self.texts['Bluetooth'],
-            self.texts['Bluetooth-Administration'],
-            self.texts['WLAN-Status ändern'],
-            self.texts['WLAN-Status anzeigen'],
-            self.texts['NFC'],
-            self.texts['Netzwerkstatus anzeigen'],
-            self.texts['Beim Start ausführen'],
-            self.texts['System-Overlay'],
-            self.texts['Systemeinstellungen ändern'],
-            self.texts['Fingerabdrucksensor verwenden'],
-            self.texts['Konten abrufen'],
-            self.texts['Biometrische Authentifizierung verwenden'],
-            self.texts['Hintergrund-Standortzugriff'],
-            self.texts['Batterieoptimierung ignorieren'],
-            self.texts['Vordergrunddienst'],
-            self.texts['Vibration'],
-            self.texts['Sichtbarkeit des Geräts'],
-            self.texts['WLAN-Verbindung'],
-            self.texts['APN ändern'],
-            self.texts['Standortdienste'],
-            self.texts['Statusbar anpassen'],
-            self.texts['Systemapps nutzen'],
-            self.texts['Mediendateien abspielen'],
-            self.texts['Kalender lesen'],
-            self.texts['Kalender ändern'],
-            self.texts['Zugriff auf die Benutzeroberfläche'],
-            self.texts['Zugriff auf die Hardware'],
-            self.texts['Bluetooth-Admin'],
-            self.texts['Task-Manager'],
-            self.texts['Einstellungen ändern'],
-            self.texts['Ereignisse überwachen'],
-            self.texts['Standortdienste verwenden'],
-            self.texts['Fehlersuche'],
-            self.texts['Zugriff auf Benachrichtigungen'],
-            self.texts['Root-Zugriff'],
-            self.texts['Superuser-Zugriff'],
-            self.texts['Zugriff auf Systemdateien'],
-            self.texts['Zugriff auf alle Anwendungen'],
-            self.texts['Zugriff auf gesperrte Apps'],
-            self.texts['Zugriff auf versteckte Apps'],
-            self.texts['Zugriff auf interne Speicherorte'],
-            self.texts['Zugriff auf die Systemoberfläche'],
-            self.texts['Zugriff auf das Dateisystem'],
-            self.texts['Zugriff auf Hardware-Sensoren'],
-            self.texts['Zugriff auf Systemdienste'],
-            self.texts['Zugriff auf die Registrierungsdatenbank'],
-        ]
+            self.permissions = [
+                self.texts['Kamera'],
+                self.texts['Mikrofon'],
+                self.texts['Speicher lesen'],
+                self.texts['Speicher schreiben'],
+                self.texts['Feiner Standort'],
+                self.texts['Grob Standort'],
+                self.texts['SMS senden'],
+                self.texts['SMS empfangen'],
+                self.texts['Internet'],
+                self.texts['Kontakte lesen'],
+                self.texts['Kontakte schreiben'],
+                self.texts['Anrufliste lesen'],
+                self.texts['Anrufliste schreiben'],
+                self.texts['Telefonstatus lesen'],
+                self.texts['Anrufe tätigen'],
+                self.texts['Ausgehende Anrufe verarbeiten'],
+                self.texts['Körpersensoren'],
+                self.texts['Bluetooth'],
+                self.texts['Bluetooth-Administration'],
+                self.texts['WLAN-Status ändern'],
+                self.texts['WLAN-Status anzeigen'],
+                self.texts['NFC'],
+                self.texts['Netzwerkstatus anzeigen'],
+                self.texts['Beim Start ausführen'],
+                self.texts['System-Overlay'],
+                self.texts['Systemeinstellungen ändern'],
+                self.texts['Fingerabdrucksensor verwenden'],
+                self.texts['Konten abrufen'],
+                self.texts['Biometrische Authentifizierung verwenden'],
+                self.texts['Hintergrund-Standortzugriff'],
+                self.texts['Batterieoptimierung ignorieren'],
+                self.texts['Vordergrunddienst'],
+                self.texts['Vibration'],
+                self.texts['Sichtbarkeit des Geräts'],
+                self.texts['WLAN-Verbindung'],
+                self.texts['APN ändern'],
+                self.texts['Standortdienste'],
+                self.texts['Statusbar anpassen'],
+                self.texts['Systemapps nutzen'],
+                self.texts['Mediendateien abspielen'],
+                self.texts['Kalender lesen'],
+                self.texts['Kalender ändern'],
+                self.texts['Zugriff auf die Benutzeroberfläche'],
+                self.texts['Zugriff auf die Hardware'],
+                self.texts['Bluetooth-Admin'],
+                self.texts['Task-Manager'],
+                self.texts['Einstellungen ändern'],
+                self.texts['Ereignisse überwachen'],
+                self.texts['Standortdienste verwenden'],
+                self.texts['Fehlersuche'],
+                self.texts['Zugriff auf Benachrichtigungen'],
+                self.texts['Root-Zugriff'],
+                self.texts['Superuser-Zugriff'],
+                self.texts['Zugriff auf Systemdateien'],
+                self.texts['Zugriff auf alle Anwendungen'],
+                self.texts['Zugriff auf gesperrte Apps'],
+                self.texts['Zugriff auf versteckte Apps'],
+                self.texts['Zugriff auf interne Speicherorte'],
+                self.texts['Zugriff auf die Systemoberfläche'],
+                self.texts['Zugriff auf das Dateisystem'],
+                self.texts['Zugriff auf Hardware-Sensoren'],
+                self.texts['Zugriff auf Systemdienste'],
+                self.texts['Zugriff auf die Registrierungsdatenbank'],
+            ]
 
         
-
-        info_text = (
+        
+            info_text = (
                 f"\n\n{self.texts['Hersteller']}: {self.manufacturer}\n"
                 f"{self.texts['device_model']}: {self.model}\n"
                 f"{self.texts['android_version']}: {self.version}\n"
@@ -1027,14 +1175,17 @@ class TWRPBackupRestoreApp:
                 f"{self.texts['connected_devices']}: {', '.join(self.bluetooth_devices) if self.bluetooth_devices else self.texts['no_connected_devices']}\n"
                 f"\n---- {self.texts['battery']} ----\n"
                 f"\n{self.battery_info}\n"
-
             )
 
-        self.info_label.config(state="normal")
-        self.info_label.delete("1.0", tk.END)
-        self.info_label.insert(tk.END, info_text)
-        self.info_label.config(state="disabled")
+            self.info_label.config(state="normal")
+            self.info_label.delete("1.0", tk.END)
+            self.info_label.insert(tk.END, info_text)
+            self.info_label.config(state="disabled")
         
+        except Exception as e:
+            # Optional: Fehlerprotokollierung oder -benachrichtigung
+            print(f"Fehler beim Erstellen des Info-Textes: {str(e)}")
+            # Hier könnte man auch eine Benachrichtigung für den Benutzer hinzufügen
 
         
         self.create()
@@ -1048,13 +1199,23 @@ class TWRPBackupRestoreApp:
             
             self.restart_program()
 
+
+    def wrestart_program(self):
+        """Callback-Funktion für den Button."""
+        if self.restarter.restart_program():
+            pass
+        else:
+            pass
+
     def restart_program(self):
         # Das aktuelle Skript neu starten
         self.switch_language()
+        self.update_texts()
         
         self.device_info()
         os.execv(sys.executable, ['python'] + sys.argv)
-        os.execv(sys.executable, ['Data.exe'] + sys.argv)
+        
+       
 
     def del_comboboxen(self):
 
@@ -1152,7 +1313,8 @@ class TWRPBackupRestoreApp:
 
     def app_info(self):
         try:
-            selected_apps = [self.listbox_apks.get(i) for i in self.listbox_apks.curselection()]
+            selected_apps = [self.listbox_apks.item(i)['values'][0] for i in self.listbox_apks.selection()]
+
 
             if selected_apps:
                 app_name = selected_apps[0]
@@ -1543,14 +1705,13 @@ class TWRPBackupRestoreApp:
 
     def start_selection(self, event):
         """Startet die Auswahl, wenn die linke Maustaste gedrückt wird."""
-        self.is_mouse_down = True  # Setzt das Flag für gedrückte Maustaste
-        index = self.listbox_apks.nearest(event.y)  # Nächsten Index basierend auf der Mausposition erhalten
+        index = self.listbox_apks.identify_row(event.y)  # Nächsten Index basierend auf der Mausposition erhalten
         self.listbox_apks.selection_set(index)  # Setzt die Auswahl
 
     def select_with_drag(self, event):
         """Ermöglicht die Auswahl mehrerer Apps beim Ziehen mit gedrückter Maustaste."""
         if self.is_mouse_down:  # Überprüfe, ob die Maustaste gedrückt ist
-            index = self.listbox_apks.nearest(event.y)  # Nächsten Index basierend auf der Mausposition erhalten
+            index = self.listbox_apks.identify_row(event.y)  # Nächsten Index basierend auf der Mausposition erhalten
             self.listbox_apks.selection_set(index)  # Setzt die Auswahl
 
     def end_selection(self, event):
@@ -1576,77 +1737,86 @@ class TWRPBackupRestoreApp:
 
 
     def load_apks(self):
+        """Lädt die Benutzer-APKs von ADB und zeigt sie im Treeview an."""
         try:
             # ADB Befehl, um nur User-Apps zu erhalten
             result = subprocess.run(['adb', 'shell', 'pm', 'list', 'packages', '-3'], capture_output=True, text=True)
-            if result.returncode != 0:
-                raise Exception(self.texts['adb_error1'])
             
+            if result.returncode != 0:
+                #self.console_output.insert("ADB Fehler: " + result.stderr.strip())
+                pass
             # Pakete aus der Ausgabe filtern und formatieren
             packages = result.stdout.splitlines()
             packages = [pkg.replace("package:", "") for pkg in packages]
             self.apps = packages  # Speichere die User-Apps
             self.displayed_apps = self.apps.copy()  # Kopiere die Liste in displayed_apps
-            self.update_listbox_apks()  # Aktualisiere die Listbox
+            self.update_listbox_apks()  # Aktualisiere das Treeview
             return packages
         except Exception as e:
-            messagebox.showerror("Error", str(e))
-             # Fehler in der Konsole ausgeben
+            messagebox.showerror("Fehler", str(e))
             return []
 
     def load_all(self):
+        """Lädt die Benutzer-APKs von ADB und zeigt sie im Treeview an."""
         try:
-            # ADB Befehl, um alle Apps (System + User) zu erhalten
+            # ADB Befehl, um nur User-Apps zu erhalten
             result = subprocess.run(['adb', 'shell', 'pm', 'list', 'packages'], capture_output=True, text=True)
             if result.returncode != 0:
-                raise Exception(self.texts['adb_error1'])
-            
+                raise Exception("ADB Fehler: " + result.stderr.strip())
+
             # Pakete aus der Ausgabe filtern und formatieren
             packages = result.stdout.splitlines()
             packages = [pkg.replace("package:", "") for pkg in packages]
-            self.apps = packages  # Speichere alle Apps
+            self.apps = packages  # Speichere die User-Apps
             self.displayed_apps = self.apps.copy()  # Kopiere die Liste in displayed_apps
-            self.update_listbox_apks()  # Aktualisiere die Listbox
+            self.update_listbox_apks()  # Aktualisiere das Treeview
             return packages
         except Exception as e:
-            messagebox.showerror("Error", str(e))
-             # Fehler in der Konsole ausgeben
+            messagebox.showerror("Fehler", str(e))
             return []
-        
+    
     def load_system_apps(self):
+        """Lädt die Benutzer-APKs von ADB und zeigt sie im Treeview an."""
         try:
-            # ADB Befehl, um alle Apps (System + User) zu erhalten
+            # ADB Befehl, um nur User-Apps zu erhalten
             result = subprocess.run(['adb', 'shell', 'pm', 'list', 'packages', '-s'], capture_output=True, text=True)
             if result.returncode != 0:
-                raise Exception(self.texts['adb_error1'])
-            
+                raise Exception("ADB Fehler: " + result.stderr.strip())
+
             # Pakete aus der Ausgabe filtern und formatieren
             packages = result.stdout.splitlines()
             packages = [pkg.replace("package:", "") for pkg in packages]
-            self.apps = packages  # Speichere alle Apps
+            self.apps = packages  # Speichere die User-Apps
             self.displayed_apps = self.apps.copy()  # Kopiere die Liste in displayed_apps
-            self.update_listbox_apks()  # Aktualisiere die Listbox
+            self.update_listbox_apks()  # Aktualisiere das Treeview
             return packages
         except Exception as e:
-            messagebox.showerror("Error", str(e))
-              # Fehler in der Konsole ausgeben
+            messagebox.showerror("Fehler", str(e))
             return []
 
     def update_listbox_apks(self):
-        self.listbox_apks.delete(0, tk.END)  # Listbox leeren
-        for app in self.displayed_apps:  # Nutze die angezeigten Apps (gefiltert oder komplett)
-            self.listbox_apks.insert(tk.END, app)
+        """Aktualisiert die Treeview mit den geladenen APKs."""
+        # Treeview leeren
+        self.listbox_apks.delete(*self.listbox_apks.get_children())
+        
+        # Füge die Apps zur Treeview hinzu
+        for app in self.displayed_apps:
+            self.listbox_apks.insert("", tk.END, values=(app,))   # Füge die Apps zur Listbox hinzu
 
     def search_apks(self, event=None):
         search_term = self.search_app_var.get().lower()  # Den aktuellen Suchbegriff aus der search_var holen
+        self.listbox_apks.delete(*self.listbox_apks.get_children())  # Leere das Treeview
+
         if search_term:
             # Filtere die Apps, die den Suchbegriff enthalten
-            self.displayed_apps = [app for app in self.apps if search_term in app.lower()]
+            filtered_apps = [app for app in self.apps if search_term in app.lower()]
         else:
             # Zeige alle Apps, wenn kein Suchbegriff eingegeben wurde
-            self.displayed_apps = self.apps.copy()
+            filtered_apps = self.apps.copy()
         
-        self.update_listbox_apks()  # Aktualisiere die Listbox nach der Suche
+        # Füge die gefilterten Apps zum Treeview hinzu
+        for app in filtered_apps:
+            self.listbox_apks.insert('', 'end', values=(app,))  # Angenommen, app ist der Paketname, der in einer Spalte angezeigt wird
 
     def refresh_app_list(self):
         # User-Apps laden
@@ -1676,7 +1846,7 @@ class TWRPBackupRestoreApp:
         if selected_action == self.texts['Sichere alle APPS']:
             self.backup_all_apkss()  # User-Apps laden
         elif selected_action == self.texts['Sichere ausgewählte APPS']:
-            self.backup_apps()  # Alle Apps (System + User) laden
+            self.backup_selected_apps()  # Alle Apps (System + User) laden
         
    
     def select_p_option(self, selected_action):
@@ -1954,12 +2124,12 @@ class TWRPBackupRestoreApp:
                 return  # Nach der Installation beenden
 
             # Für alle anderen Aktionen Überprüfung, ob eine App ausgewählt wurde
-            selected_index = self.listbox_apks.curselection()
+            selected_index = self.listbox_apks.selection()
             if not selected_index:
                 messagebox.showerror("Error", self.texts['adb_error2'])
                 return
 
-            selected_app = self.listbox_apks.get(selected_index[0])
+            selected_app = self.listbox_apks.item(selected_index[0])
 
             # Führe die entsprechende Aktion aus
             if selected_action == self.texts['App Installieren']:
@@ -2364,14 +2534,15 @@ class TWRPBackupRestoreApp:
 
     def load_permission(self, permission):
         try:
-            selected_app = self.listbox_apks.get(self.listbox_apks.curselection())
-            if not selected_app:
+            selected_item = self.listbox_apks.selection()
+            if not selected_item:
                 raise Exception("Keine App ausgewählt")
 
-            result = subprocess.run(
-                ['adb', 'shell', 'pm', 'grant', selected_app, permission],
-                capture_output=True, text=True
-            )
+            # Paketname aus dem Treeview extrahieren
+            selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
+            
+            # ADB-Befehl zum Entfernen der Berechtigung
+            result = subprocess.run(['adb', 'shell', 'pm', 'grant', selected_app, permission], capture_output=True, text=True)
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['Erfolgt1']} {selected_app}\n")
             else:
@@ -2379,19 +2550,23 @@ class TWRPBackupRestoreApp:
         except Exception as e:
             self.console_output.insert(tk.END, f"{str(e)}\n")
 
-
     def unload_permission(self, permission):
         try:
-            selected_app = self.listbox_apks.get(self.listbox_apks.curselection())
-            if not selected_app:
+            # Abrufen des aktuell ausgewählten Elements im Treeview
+            selected_item = self.listbox_apks.selection()
+            if not selected_item:
                 raise Exception("Keine App ausgewählt")
+
+            # Paketname aus dem Treeview extrahieren
+            selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
             
             # ADB-Befehl zum Entfernen der Berechtigung
             result = subprocess.run(['adb', 'shell', 'pm', 'revoke', selected_app, permission], capture_output=True, text=True)
+            
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['Erfolgt2']} {selected_app}\n")
             else:
-                self.console_output.insert(tk.END, f"{self.texts['error2']} {selected_app}\n")
+                self.console_output.insert(tk.END, f"{self.texts['error2']} {selected_app}: {result.stderr}\n")
         except Exception as e:
             self.console_output.insert(tk.END, str(e) + "\n")
 
@@ -2402,10 +2577,14 @@ class TWRPBackupRestoreApp:
 
     def start_app(self, app):
         try:
-            selected_app = self.listbox_apks.get(self.listbox_apks.curselection())
-            if not selected_app:
+            selected_items = self.listbox_apks.selection()  # Holt die IDs der ausgewählten Elemente
+            if not selected_items:
                 raise Exception("Keine App ausgewählt")
-            
+
+            # Hier nehmen wir an, dass wir den ersten ausgewählten Eintrag verwenden möchten
+            selected_app_id = selected_items[0]  # Nimm die ID des ersten ausgewählten Elements
+            selected_app = self.listbox_apks.item(selected_app_id)['values'][0]  # Hier wird der Wert (z.B. Paketname) abgerufen
+
             # ADB Befehl zum Starten der App
             result = subprocess.run(['adb', 'shell', 'monkey', '-p', selected_app, '-c', 'android.intent.category.LAUNCHER', '1'], capture_output=True, text=True)
             if result.returncode == 0:
@@ -2413,29 +2592,47 @@ class TWRPBackupRestoreApp:
             else:
                 self.console_output.insert(tk.END, f"{self.texts['start_error']} {selected_app}\n")
         except Exception as e:
-            self.console_output.insert(tk.END, str(e),"\n")
+            self.console_output.insert(tk.END, str(e) + "\n")  # Fehlerausgabe an die Konsole
+
+
 
     def clear_data(self):
+        """Löscht die Daten der ausgewählten App."""
         try:
-            selected_app = self.listbox_apks.get(self.listbox_apks.curselection())
+            # Abrufen der aktuell ausgewählten App im Treeview
+            selected_item = self.listbox_apks.selection()
+            if not selected_item:
+                raise Exception("Keine App ausgewählt")
+
+            # Paketname aus dem Treeview extrahieren
+            selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
             command = f"adb shell pm clear {selected_app}"
-            result = subprocess.run(command, capture_output=True, text=True)
-            print(command)
+
+            # Ausführen des ADB-Befehls
+            result = subprocess.run(command.split(), capture_output=True, text=True)
+            
             if result.returncode == 0:
-                messagebox.showinfo(tk.END, f"{self.texts['del_data_erfolg']}\n")
+                self.console_output.insert(tk.END, f"{self.texts['del_data_erfolg']}\n")
             else:
-                messagebox.showerror("Fehler", f"{self.texts['del_data_error']}\n")
+                self.console_output.insert(tk.END, f"{self.texts['del_data_error']}\n")
         except Exception as e:
-            messagebox.showerror("Fehler", str(e))
+            self.console_output(tk.END, str(e))
+
 
     def stop_app(self, app):
         try:
-            selected_app = self.listbox_apks.get(self.listbox_apks.curselection())
-            if not selected_app:
-                raise Exception(self.texts['no_app_select'])
+            # Abrufen der aktuell ausgewählten App im Treeview
+            selected_item = self.listbox_apks.selection()
+            if not selected_item:
+                raise Exception("Keine App ausgewählt")
+
+            # Paketname aus dem Treeview extrahieren
+            selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
+            command = f"adb shell am force-stop {selected_app}"
+
+            # Ausführen des ADB-Befehls
+            result = subprocess.run(command.split(), capture_output=True, text=True)
             
-            # ADB Befehl zum Stoppen der App
-            result = subprocess.run(['adb', 'shell', 'am', 'force-stop', selected_app], capture_output=True, text=True)
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['stop_app']}\n")
             else:
@@ -2447,14 +2644,17 @@ class TWRPBackupRestoreApp:
 
     def clear_cache(self):
         try:
-            selected_app = self.listbox_apks.get(self.listbox_apks.curselection())
-            if not selected_app:
-                raise Exception(self.texts['no_app_select'])
-            
-            # ADB Befehl zum Löschen des Caches
-            command = f"adb shell rm -rf /data/data/{selected_app}/cache"
-            result = subprocess.run(command, capture_output=True, text=True)
-            print(result)
+            # Abrufen der aktuell ausgewählten App im Treeview
+            selected_item = self.listbox_apks.selection()
+            if not selected_item:
+                raise Exception("Keine App ausgewählt")
+
+            # Paketname aus dem Treeview extrahieren
+            selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
+            command = f"adb shell pm clear {selected_app}"
+
+            # Ausführen des ADB-Befehls
+            result = subprocess.run(command.split(), capture_output=True, text=True)
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['del_cache_erfolg']}\n")
             else:
@@ -2466,11 +2666,13 @@ class TWRPBackupRestoreApp:
 
     def backup_all_apkss(self):
         """Sichert alle installierten Benutzer-Apps (ohne System-Apps)."""
-        all_apps = self.listbox_apks.get(0, tk.END) 
-        selected_apps = list(all_apps)  # Filtere nur Benutzer-Apps
+        all_apps = [self.listbox_apks.item(item)['values'][0] for item in self.listbox_apks.get_children()]
+        
+        # Filtere nur Benutzer-Apps (hier kannst du die Bedingung anpassen)
+        selected_apps = [app for app in all_apps if "system" not in app]  
 
         if not selected_apps:
-            pass
+            self.console_output.insert(tk.END, "Keine Benutzer-Apps zum Sichern gefunden.\n")
             return
 
         # Speicherort nur einmal auswählen
@@ -2499,18 +2701,21 @@ class TWRPBackupRestoreApp:
 
                 # Überprüfen, ob die gesicherte APK den Namen 'base.apk' hat
                 if original_apk_name == "base.apk":
-                    # Generiere einen zufälligen Namen
-                    random_name = ''.join(random.choices(string.ascii_letters + string.digits, k=8)) + ".apk"
-                    renamed_path = os.path.join(backup_directory, random_name)
-                    os.rename(destination_path, renamed_path)
+                    # Wenn der Name 'base.apk' ist, generiere einen benutzerfreundlicheren Namen
+                    app_name = app.split('.')[-1]  # Der Name der App
+                    destination_path = os.path.join(backup_directory, f"{app_name}.apk")  # Benenne die Datei um
+
+                    # Die 'base.apk' umbenennen
+                    os.rename(destination_path, f"{backup_directory}/{app_name}.apk")
                     
-                else:
-                    self.console_output.insert(tk.END, f"{app} {self.texts['safet_to']} {destination_path}!\n")
+                self.console_output.insert(tk.END, f"{app} {self.texts['safet_to']} {destination_path}!\n")
 
             except subprocess.CalledProcessError as e:
                 self.console_output.insert(tk.END, f"{self.texts['safe_error']} {app}: {e}\n")
             except Exception as e:
-                self.console_output.insert(tk.END, f"Error: {str(e)}\n")
+                self.console_output.insert(tk.END, f"Fehler: {str(e)}\n")
+
+
 
     def get_apk_path(self, package_name):
         """Gibt den Pfad der Haupt-APK einer App zurück."""
@@ -3502,11 +3707,12 @@ class TWRPBackupRestoreApp:
 
     def backup_all_apps(self):
         """Sichert alle installierten Benutzer-Apps (ohne System-Apps)."""
-        all_apks = self.app_listbox.get(0, tk.END) 
-        selected_apps = [app for app in all_apks if "system" not in app]
+        # Holen Sie sich alle Apps aus der Listbox (ersetze dies mit dem Treeview)
+        all_apks = self.listbox_apks.get_children()  # Bei Treeview verwenden wir get_children()
+        selected_apps = [self.listbox_apks.item(app)['values'][0] for app in all_apks if "system" not in self.listbox_apks.item(app)['values'][0]]
 
         if not selected_apps:
-            pass
+            self.console_output.insert(tk.END, "Keine Benutzer-Apps gefunden.\n")
             return
 
         # Speicherort nur einmal auswählen
@@ -3517,6 +3723,7 @@ class TWRPBackupRestoreApp:
 
         # Starte den Sicherungsprozess in einem neuen Thread
         threading.Thread(target=self.all_perform_backup, args=(selected_apps, backup_directory), daemon=True).start()
+
 
 
 
@@ -3659,27 +3866,77 @@ class TWRPBackupRestoreApp:
         except Exception as e:
             self.console_output.insert(tk.END, f"Fehler: {str(e)}\n")
 
-    def backup_apps(self):
+    def backup_selected_apps(self):
         """Sichert die ausgewählten Apps und fügt Split-APKs zusammen."""
-        selected_apps = [self.listbox_apks.get(i) for i in self.listbox_apks.curselection()]
+        selected_items = self.listbox_apks.selection()  # Holen Sie sich die ausgewählten Elemente
+        selected_apps = [self.listbox_apks.item(item)['values'][0] for item in selected_items]  # Paketnamen extrahieren
 
         if not selected_apps:
             self.console_output.insert(tk.END, "Keine Apps ausgewählt.\n")
             return
 
-        # Starte den Sicherungsprozess in einem neuen Thread
-        threading.Thread(target=self.perform_backup, args=(selected_apps,), daemon=True).start()
+        # Speicherort für Backups auswählen
+        backup_directory = filedialog.askdirectory(title="Wähle den Speicherort für die Backups")
+        if not backup_directory:
+            self.console_output.insert(tk.END, "Kein Speicherort ausgewählt.\n")
+            return
 
+        # Starte den Sicherungsprozess in einem neuen Thread
+        threading.Thread(target=self.perform_backup1, args=(selected_apps, backup_directory), daemon=True).start()
+
+    def perform_backup1(self, selected_apps, backup_directory):
+        """Sichert die ausgewählten Apps in ein definiertes Verzeichnis."""
+        
+        for app in selected_apps:
+            try:
+                # ADB-Befehl zum Sichern der App
+                command = f"adb shell pm path {app}"
+                result = subprocess.run(command.split(), capture_output=True, text=True)
+
+                if result.returncode == 0:
+                    apk_path = result.stdout.strip().replace("package:", "")
+                    
+                    # Extrahiere den App-Namen aus dem Paketnamen (z.B. com.example.app)
+                    app_name = app.split('.')[-1]  # Nehme den letzten Teil des Paketnamens
+                    apk_filename = f"{app_name}.apk"  # Erstelle den Namen für die APK-Datei
+
+                    # Kopiere die APK zur Backup-Directory mit dem App-Namen
+                    adb_pull_command = f"adb pull {apk_path} {os.path.join(backup_directory, apk_filename)}"
+                    pull_result = subprocess.run(adb_pull_command.split(), capture_output=True)
+
+                    if pull_result.returncode == 0:
+                        self.console_output.insert(tk.END, f"Backup von {app} erfolgreich!\n")
+                    else:
+                        self.console_output.insert(tk.END, f"Fehler beim Sichern von {app}: {pull_result.stderr}\n")
+                else:
+                    self.console_output.insert(tk.END, f"Fehler beim Ermitteln des Pfads für {app}: {result.stderr}\n")
+            except Exception as e:
+                self.console_output.insert(tk.END, f"Fehler: {str(e)}\n")
+
+
+
+
+
+    
     def backup_selected_appss(self):
         """Sichert die ausgewählten Apps und fügt Split-APKs zusammen."""
-        selected_apps = [self.listbox_apks.get(i) for i in self.listbox_apks.curselection()]
+        selected_items = self.listbox_apks.selection()  # Holen Sie sich die ausgewählten Elemente
+        selected_apps = [self.listbox_apks.item(item)['values'][0] for item in selected_items]  # Paketnamen extrahieren
 
         if not selected_apps:
             self.console_output.insert(tk.END, "Keine Apps ausgewählt.\n")
             return
 
+        # Speicherort für Backups auswählen
+        backup_directory = filedialog.askdirectory(title="Wähle den Speicherort für die Backups")
+        if not backup_directory:
+            self.console_output.insert(tk.END, "Kein Speicherort ausgewählt.\n")
+            return
+
         # Starte den Sicherungsprozess in einem neuen Thread
-        threading.Thread(target=self.perform_backup, args=(selected_apps,), daemon=True).start()
+        threading.Thread(target=self.perform_backup, args=(selected_apps, backup_directory), daemon=True).start()
+
+
 
 
 
@@ -3788,7 +4045,7 @@ class TWRPBackupRestoreApp:
 
     def delete_selected_apps(self):
             # Überprüfen, welche Apps in der gefilterten Liste ausgewählt sind
-            selected_indices = self.listbox_apks.curselection()
+            selected_indices = self.listbox_apks.selection()
             selected_apps = [self.displayed_apps[i].replace("package:", "") for i in selected_indices]
 
             if not selected_apps:
@@ -3977,7 +4234,7 @@ class TWRPBackupRestoreApp:
         self.delete_apps_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
         self.select_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.05)
         
-        self.delete_all_frame.place(relx=0.1, rely=0.15, relwidth=0.8, relheight=0.8)
+        self.delete_all_frame.place(rely=0.1, relwidth=1, relheight=0.9)
         self.install_frame.place_forget()
         
         self.odin_frame.place_forget()
@@ -3998,7 +4255,7 @@ class TWRPBackupRestoreApp:
         self.settings_frame.place_forget()
         self.settings_opti_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - APP MANAGMENT")
+        self.master.title("APP MANAGMENT")
 
     def open_prop_frame(self):    
         self.settings_prop_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen

@@ -23,6 +23,7 @@ CONFIG_FILE = "config.json"
 ############# FAST SAFE ########################################################################################################################
 
 
+
 def load_language_setting():
         # Versuche, die Sprache aus der Konfigurationsdatei zu laden
         try:
@@ -390,6 +391,14 @@ def clear_log_temporarily(log_widget):
 def open_fast_frame():
     top = Toplevel()  # Erstelle ein neues Toplevel-Fenster
     top.title(texts['schnellesSichern'])
+
+    try:
+        img = Image.open(r"img\explorer.ico")
+        img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
+        icon_photo = ImageTk.PhotoImage(img)
+        top.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+    except Exception as e:
+        print(f"Fehler beim Laden des Icons: {e}")
     
     top.geometry("600x400")
     top.resizable(False, False)
@@ -808,6 +817,14 @@ def open_text_editor():
     editor_window.geometry("800x750")
     editor_window.configure(bg="#282C34")
 
+    try:
+        img = Image.open(r"img\explorer.ico")
+        img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
+        icon_photo = ImageTk.PhotoImage(img)
+        editor_window.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+    except Exception as e:
+        print(f"Fehler beim Laden des Icons: {e}")
+
     # Frame für den Texteditor mit schönem Design
     frame = ttk.Frame(editor_window, padding="10 10 10 10", style="My.TFrame")
     frame.place(relx=0.05, rely=0.05, relwidth=0.9, relheight=0.9)
@@ -848,6 +865,14 @@ def create_top_level():
     top = Toplevel(root)
     top.title(texts['Info'])
     top.geometry("310x200")
+
+    try:
+        img = Image.open(r"img\explorer.ico")
+        img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
+        icon_photo = ImageTk.PhotoImage(img)
+        top.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+    except Exception as e:
+        print(f"Fehler beim Laden des Icons: {e}")
 
     global name_value, path_value, type_value, size_value
 
@@ -972,6 +997,14 @@ def apply_options(archive_name_entry, local_path_entry, archive_format_var, opti
 def open_options_window():
     options_window = tk.Toplevel(root)
     options_window.title(texts['option'])
+
+    try:
+        img = Image.open(r"img\explorer.ico")
+        img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
+        icon_photo = ImageTk.PhotoImage(img)
+        options_window.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+    except Exception as e:
+        print(f"Fehler beim Laden des Icons: {e}")
     
     # Archivname
     tk.Label(options_window, text=texts['name2']).grid(row=0, column=0, padx=10, pady=5)
@@ -1144,6 +1177,14 @@ def open_toplevel():
 
     toplevel = tk.Toplevel(root)
     toplevel.title("Informationen eingeben")
+
+    try:
+        img = Image.open(r"img\explorer.ico")
+        img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
+        icon_photo = ImageTk.PhotoImage(img)
+        toplevel.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+    except Exception as e:
+        print(f"Fehler beim Laden des Icons: {e}")
     
     # Label und Entry für den Namen
     name_label = tk.Label(toplevel, text=texts['Name'])
@@ -1237,15 +1278,26 @@ def rename_files():
     update_file_list(current_directory)
 
 def push_selected_file():
-    """Wählt eine Datei vom PC aus und kopiert sie auf das Gerät."""
-    # Datei auswählen
-    selected_file = filedialog.askopenfilename(title="")
+    """Wählt eine Datei oder einen Ordner vom PC aus und kopiert sie auf das Gerät."""
+    # Wählen Sie zwischen Datei oder Ordner
+    choice = messagebox.askquestion("Wählen Sie aus", "File = Yes\nFolder=NO", icon='question')
     
-    if not selected_file:
-        return  # Abbrechen, wenn keine Datei ausgewählt wurde
-    
-    # Datei kopieren
-    push_files(selected_file)  
+    if choice == 'yes':
+        # Datei auswählen
+        selected_file = filedialog.askopenfilename(title="Wählen Sie eine Datei aus")
+        
+        if selected_file:
+            push_files(selected_file)  # Datei kopieren
+        else:
+            return  # Abbrechen, wenn keine Datei ausgewählt wurde
+    else:
+        # Ordner auswählen
+        selected_file = filedialog.askdirectory(title="Wählen Sie einen Ordner aus")
+        
+        if selected_file:
+            push_files(selected_file)  # Ordner kopieren
+        else:
+            return  # Abbrechen, wenn kein Ordner ausgewählt wurde
 
 def copy_selected_file():
     """Kopiere die ausgewählte Datei."""
@@ -1316,6 +1368,14 @@ root.title("File Explorer")
 root.geometry("600x500")  # Fenstergröße
 root.configure(bg="#2E2E2E")  # Hintergrundfarbe des Fensters
 
+try:
+    img = Image.open(r"img\explorer.ico")
+    img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
+    icon_photo = ImageTk.PhotoImage(img)
+    root.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+except Exception as e:
+    print(f"Fehler beim Laden des Icons: {e}")
+
 sort_var = tk.StringVar(value=sort_options[0])  # Standardwert
 sort_menu = ttk.OptionMenu(root, sort_var, sort_options[0], *sort_options, command=on_sort_change)
 sort_menu.pack()
@@ -1382,5 +1442,8 @@ fast_save_button.pack(side="right",anchor="ne", padx=5)
 save_button = tk.Button(root, text=texts['copy'], command=on_save_button_click, bg="#666666", fg="white", font=("Arial", 12))
 save_button.pack(side="right",anchor="ne", padx=5)
 
+
+
 # Starte die Tkinter-Hauptschleife
 root.mainloop()
+

@@ -1,0 +1,3 @@
+
+# Magisk init
+exec /magiskinit

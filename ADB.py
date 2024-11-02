@@ -1,9 +1,6 @@
-import glob
 import json
-import random
 import shutil
 import socket
-import string
 import subprocess
 import sys
 from threading import Thread
@@ -172,7 +169,7 @@ class TWRPBackupRestoreApp:
 
     def __init__(self, master):
         self.master = master
-        self.master.title("TWRP Backup & Restore - Home")
+        self.master.title("Phone Controll - Home")
         self.master.geometry("1000x740")
         self.search_var = tk.StringVar()
         self.apktool_path = r"apktool.jar"
@@ -188,6 +185,11 @@ class TWRPBackupRestoreApp:
         self.device_label = None
 
         #Images
+
+        self.magisk_folder_path = r"tools/Magisk"  # Pfad zum Magisk-Ordner
+        
+        # Initialisiere Boot-Image-Pfad
+        self.boot_image_path = ""
 
         self.refrash_img = Image.open(r"img\refresh.png")  # Ersetze mit dem Pfad zu deinem Bild
         self.refresh_ico = ImageTk.PhotoImage(self.refrash_img)
@@ -356,6 +358,8 @@ class TWRPBackupRestoreApp:
 
 
 
+
+
         # Treeview erstellen und an Scrollbar binden
         self.listbox_apks = ttk.Treeview(self.delete_all_frame, columns=('Package Name',), show='headings', yscrollcommand=self.scrollbar.set)
         self.listbox_apks.place(rely=0.15, relx=0.05, relheight=0.65, relwidth=0.9)
@@ -515,6 +519,10 @@ class TWRPBackupRestoreApp:
 
         self.apk_install_frame = tk.Button(self.install_frame, text="", command=self.start_flashing_process)
         self.apk_install_frame.place(relx=0.2, rely=0.25)
+
+        self.patch_boot_button = tk.Button(self.install_frame, text="Patch Boot (Magisk)", command=self.select_boot_image)
+        self.patch_boot_button.place_forget()
+
 
         self.select_flash_file_button = tk.Button(self.fastboot_frame, text="", command=self.select_flash_file)
         self.select_flash_file_button.place(relx=0.2, rely=0.7)
@@ -869,8 +877,110 @@ class TWRPBackupRestoreApp:
         
 
 
-    ############# BATTERIE ###############
+    ############# BATTERIE ##############
 
+
+
+
+    # Auswahl des Boot-Image-Pfads
+    def select_boot_image(self):
+        self.boot_image_path = filedialog.askopenfilename(filetypes=[("Image-Dateien", "*.img")])
+        
+        if self.boot_image_path:
+            self.console_output.insert(tk.End, f"Ausgewähltes Boot-Image: {self.boot_image_path}")
+
+            choice = messagebox.askquestion("Wählen Sie aus", "Start Patching?", icon='question')
+            
+            if choice == 'yes':
+                # Prüfen, ob eine Boot-Image-Datei ausgewählt wurde
+                if self.boot_image_path:
+                    self.console_output.insert(tk.END,"Starte den Patching-Prozess...")
+                    self.run_patching_in_thread()  # Datei kopieren und patchen
+                else:
+                    self.console_output.insert(tk.END,"Keine Boot-Image-Datei ausgewählt. Abbrechen.")
+                    return  # Abbrechen, wenn keine Datei ausgewählt wurde
+            else:
+                self.console_output.insert(tk.END, "Patching abgebrochen.")
+                return  # Abbrechen, wenn der Benutzer nicht fortfahren möchte
+        else:
+            self.console_output.insert(tk.END, "Keine Boot-Image-Datei ausgewählt.")  # Benutzer informierender
+
+    # Starte Patching-Prozess in einem neuen Thread
+    def run_patching_in_thread(self):
+        patching_thread = threading.Thread(target=self.start_patching)
+        patching_thread.start()
+
+    # Startet den gesamten Patching-Prozess
+    def start_patching(self):
+        if not self.boot_image_path or not os.path.isfile(self.boot_image_path):
+            messagebox.showerror("Fehler", "Bitte wähle ein gültiges Boot-Image aus.")
+            return
+        if not os.path.isdir(self.magisk_folder_path):
+            messagebox.showerror("Fehler", "Magisk-Ordner existiert nicht oder ist ungültig.")
+            return
+
+        # Extrahiere, modifiziere und repacke das Boot-Image
+        self.extract_boot_image()
+        self.modify_init_rc()
+        self.repack_boot_image()
+        messagebox.showinfo("Erfolg", "Boot-Image-Patching abgeschlossen.")
+
+    # Extrahieren des Boot-Images mit magiskboot
+    def extract_boot_image(self):
+        try:
+            self.console_output.insert(tk.END,"Extrahiere Boot-Image mit magiskboot...")
+            magiskboot_exe = os.path.join(self.magisk_folder_path, "magiskboot.exe")
+            if not os.path.isfile(magiskboot_exe):
+                self.console_output.insert(tk.END, "Fehler: magiskboot.exe wurde nicht gefunden.")
+                return
+            
+            # Befehl und Parameter
+            command = [magiskboot_exe, "unpack", self.boot_image_path]
+            self.console_output.insert(tk.END, f"Ausgeführter Befehl: {' '.join(command)}")  # Log den Befehl
+            
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.console_output.insert(tk.END, result.stdout)
+            self.console_output.insert(tk.END, result.stderr)
+            if result.returncode != 0:
+                self.console_output.insert(tk.END,"Fehler beim Extrahieren des Boot-Images.")
+            else:
+                self.console_output.insert(tk.End, "Boot-Image erfolgreich extrahiert.")
+        except subprocess.CalledProcessError as e:
+            self.console_output.insert(tk.END, f"Fehler beim Extrahieren: {str(e)}")
+
+    # Modifiziere die init.rc-Datei
+    def modify_init_rc(self):
+        init_rc_path = os.path.join(self.magisk_folder_path, "ramdisk.cpio")
+        try:
+            self.console_output.insert(tk.END, "Modifiziere init.rc...")
+            with open(init_rc_path, "a") as init_rc:
+                init_rc.write("\n# Magisk init\nexec /magiskinit\n")
+            self.console_output.insert(tk.END, "init.rc erfolgreich modifiziert.")
+        except FileNotFoundError:
+            self.console_output.insert(tk.END,"init.rc konnte nicht gefunden werden.")
+
+    # Repacke das Boot-Image mit magiskboot
+    def repack_boot_image(self):
+        try:
+            self.console_output.insert(tk.END, "Packe Boot-Image mit magiskboot...")
+            magiskboot_exe = os.path.join(self.magisk_folder_path, "magiskboot.exe")
+            
+            # Bestimme den Pfad für das gepackte Boot-Image
+            new_boot_image_path = os.path.join(os.path.dirname(self.boot_image_path), "newboot.img")
+            
+            # Befehl und Parameter
+            command = [magiskboot_exe, "repack", self.boot_image_path, new_boot_image_path]
+            self.console_output.insert(tk.END, f"Ausgeführter Befehl: {' '.join(command)}")  # Log den Befehl
+            
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.console_output.insert(tk.END, result.stdout)
+            self.console_output.insert(tk.END, result.stderr)
+            if result.returncode != 0:
+                self.console_output.insert(tk.END, "Fehler beim Repacken des Boot-Images.")
+            else:
+                self.console_output.insert(tk.END, f"Boot-Image erfolgreich gepackt: {new_boot_image_path}")
+        except subprocess.CalledProcessError:
+            self.console_output.insert(tk.END, "Fehler beim Repacken des Boot-Images.")
 
     # Callback-Funktion für den Mausklick
 
@@ -932,6 +1042,8 @@ class TWRPBackupRestoreApp:
             subprocess.run(f"adb shell twrp install \"{destination_path}\"", shell=True)
 
             self.console_output.insert(tk.END, "Flashing abgeschlossen!\n")
+
+            self.open_toplevel()
 
         except subprocess.CalledProcessError as e:
             self.console_output.insert(tk.END, f"Fehler beim Kopieren oder Flashen der Datei: {e}\n")
@@ -4180,7 +4292,7 @@ class TWRPBackupRestoreApp:
 
     def toggle_frame_visibility(self):    
         self.backup_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
-        self.master.title("TWRP Backup & Restore - Backup/Restore")
+        self.master.title("Phone Controll - Backup/Restore")
 
     def install_frame_open(self):    
         self.install_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4192,7 +4304,7 @@ class TWRPBackupRestoreApp:
         self.select_s_frame.place_forget()
         self.odin_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - Install")
+        self.master.title("Phone Controll - Install")
 
     def odin_frame_open(self):    
         self.odin_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4204,7 +4316,7 @@ class TWRPBackupRestoreApp:
         self.select_s_frame.place_forget()
         self.settings_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - Odin")
+        self.master.title("Phone Controll - Odin")
 
     def open_settings_framed(self):    
         self.settings_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4215,7 +4327,7 @@ class TWRPBackupRestoreApp:
         self.odin_frame.place_forget()
         self.fastboot_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - Phone Settings - Lockscreen")
+        self.master.title("Phone Controll - Phone Settings - Lockscreen")
 
     def fastboot_frame_open(self):    
         self.fastboot_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4227,7 +4339,7 @@ class TWRPBackupRestoreApp:
         self.settings_opti_frame.place_forget()
         self.select_s_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - Fastboot") 
+        self.master.title("Phone Controll - Fastboot") 
 
 
     def delete_frame_open(self):    
@@ -4243,7 +4355,7 @@ class TWRPBackupRestoreApp:
         self.settings_frame.place_forget()
         self.settings_opti_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - APP MANAGMENT")
+        self.master.title("Phone Controll - APP MANAGMENT")
 
     def delete_apk_open(self):    
         self.delete_apps_frame.place(relx=0.1, rely=0.001, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4255,7 +4367,7 @@ class TWRPBackupRestoreApp:
         self.settings_frame.place_forget()
         self.settings_opti_frame.place_forget()
         self.settings_prop_frame.place_forget()
-        self.master.title("APP MANAGMENT")
+        self.master.title("Phone Controll - APP MANAGMENT")
 
     def open_prop_frame(self):    
         self.settings_prop_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4267,7 +4379,7 @@ class TWRPBackupRestoreApp:
         self.settings_frame.place_forget()
         self.settings_opti_frame.place_forget()
         
-        self.master.title("TWRP Backup & Restore - Propertis")
+        self.master.title("Phone Controll - Propertis")
 
     def open_opti_framed(self):    
         self.settings_opti_frame.place(relx=0.1, rely=0.02, relwidth=0.8, relheight=0.45)  # Frame öffnen
@@ -4279,18 +4391,18 @@ class TWRPBackupRestoreApp:
         self.fastboot_frame.place_forget()
         self.settings_frame.place_forget()
         
-        self.master.title("TWRP Backup & Restore - Phone Settings")
+        self.master.title("Phone Controll - Phone Settings")
 
     def open_twrp(self):    
         self.backup_twrp_frame.place(relx=0.1, rely=0.15, relwidth=0.8, relheight=0.8)  # Frame öffnen
         self.backup_sel_frame.pack(side="top", fill="x")
         self.backup_dd_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - Backup/Restore (TWRP)")
+        self.master.title("Phone Controll - Backup/Restore (TWRP)")
 
     def open_dd(self):    
         self.backup_dd_frame.place(relx=0.1, rely=0.15, relwidth=0.8, relheight=0.8)  # Frame öffnen
         self.backup_sel_frame.pack(side="top", fill="x")
-        self.master.title("TWRP Backup & Restore - Backup/Restore (Root)")
+        self.master.title("Phone Controll - Backup/Restore (Root)")
 
     def open_reboot_frame(self):
         if self.frame_visible:
@@ -4299,7 +4411,7 @@ class TWRPBackupRestoreApp:
         else:
             self.reboot_options_frame.place(relx=0.75, rely=0.02, relwidth=0.2, relheight=0.45)  # Frame öffnen
             self.frame_visible = not self.frame_visible  # Zustand umschalten
-            self.master.title("TWRP Backup & Restore - Reboot Options")
+            self.master.title("Phone Controll - Reboot Options")
         
     def close_all_Frames(self):
         self.backup_frame.place_forget()  # Frame schließen ------- weitere Frames hinzu fügen
@@ -4314,7 +4426,7 @@ class TWRPBackupRestoreApp:
         self.odin_frame.place_forget()
         self.backup_dd_frame.place_forget()
         self.settings_frame.place_forget()
-        self.master.title("TWRP Backup & Restore - Home")
+        self.master.title("Phone Controll - Home")
 
     def set_dark_mode(self):
         dark_bg = "#2b2b2b"

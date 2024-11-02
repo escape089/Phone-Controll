@@ -3,7 +3,7 @@ This program uses ADB commands within a Windows application to create backups of
 ### Requirements
 - ADB must be installed on the PC and added to the PATH.
 - BusyBox should be installed on the phone to enable a complete partition backup.
-- Make sure the phone is connected to the PC via USB before starting the program.
+- Make sure the phone is connected to the PC via USB.
 
 ### Features
 - Backup of partitions and apps.

@@ -19,5 +19,12 @@ This program uses ADB commands within a Windows application to create backups of
 - Compression options.
 - Support for multiple languages.
 
+### supported languages
+- German
+- English
+- Türkish
+- Japanese (some)
+- and more
+
 [Contact me on Telegram!](https://t.me/Escape089)
 

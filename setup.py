@@ -14,7 +14,8 @@ build_exe_options = {
         ("translations.json", "translations.json"),
         ("img", "img"),
         ("platform-tools", "platform-tools"),
-        ("tools", "tools")
+        ("tools", "tools"),
+        ("app.manifest", "app.manifest")
     ]
 }
 
@@ -24,7 +25,7 @@ setup(
     description="ADB APP",
     options={"build_exe": build_exe_options},
     executables=[
-        Executable("ADB.py", target_name="Phone Controll.exe", icon="img/adb_icon2.ico"),  # Erste .exe
-        Executable("data.py", target_name="Data.exe", icon=r"img\explorer.ico")  # Zweite .exe
+        Executable("ADB.py", target_name="Phone Controll.exe", icon="img/adb_icon2.ico", manifest="app.manifest"),  # Erste .exe
+        Executable("data.py", target_name="Data.exe", icon=r"img\explorer.ico", manifest="app.manifest")  # Zweite .exe
     ]
 )

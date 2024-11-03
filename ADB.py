@@ -12,6 +12,8 @@ import threading
 import time
 from plyer import notification 
 import psutil
+from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
+from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 import requests
 import pygame
 import zipfile
@@ -24,32 +26,6 @@ ADB_URL = "https://dl.google.com/android/repository/platform-tools-latest-window
 ADB_FOLDER = "platform-tools"
 adb_path = r"platform-tools\adb.exe"
 
-class ProgramRestarter:
-    def __init__(self, program_path):
-        self.program_path = program_path
-        self.program_name = os.path.basename(program_path)
-
-    def is_program_running(self):
-        """Überprüfen, ob das Programm läuft."""
-        for process in psutil.process_iter(['name']):
-            if process.info['name'] == self.program_name:
-                return True
-        return False
-
-    def restart_program(self):
-        """Starte das Programm neu, wenn es bereits läuft."""
-        if self.is_program_running():
-            for process in psutil.process_iter(['name']):
-                if process.info['name'] == self.program_name:
-                    print(f"{self.program_name} läuft bereits und wird beendet.")
-                    process.terminate()  # Beenden des laufenden Prozesses
-                    process.wait()  # Warten, bis der Prozess beendet ist
-            
-            print(f"Starte {self.program_name} neu...")
-            subprocess.Popen([self.program_path])  # Starte das Programm neu
-        else:
-            print(f"{self.program_name} läuft nicht. Kein Neustart erforderlich.")
-            return False  # Programm ist nicht gestartet
 
 
 def load_main_program():
@@ -287,10 +263,6 @@ class TWRPBackupRestoreApp:
         self.open_dd_frame.pack(side="left", fill="both", padx=10)
 
         ## Busybox Backup ##################################################################################################
-
-        self.program_path = 'Data.exe'  # Pfad zu deinem externen Programm
-        self.restarter = ProgramRestarter(self.program_path)
-        
 
         self.ddbackupbox = tk.Listbox(self.backup_dd_frame, selectmode=tk.MULTIPLE, height=10, bg="black", fg="White")
         self.ddbackupbox.place(relx=0.05, rely=0.05, relwidth=0.9)
@@ -881,6 +853,18 @@ class TWRPBackupRestoreApp:
 
 
 
+    def get_device():
+        # Hier werden private und öffentliche Schlüssel für die ADB-Verbindung geladen oder erstellt
+        with open('adbkey', 'rb') as f:
+            priv = f.read()
+        with open('adbkey.pub', 'rb') as f:
+            pub = f.read()
+        signer = PythonRSASigner(pub, priv)
+
+        # Verbindung zum Gerät herstellen (USB)
+        device = AdbDeviceUsb()
+        device.connect(rsa_keys=[signer], auth_timeout_s=10)
+        return device
 
     # Auswahl des Boot-Image-Pfads
     def select_boot_image(self):
@@ -1101,7 +1085,7 @@ class TWRPBackupRestoreApp:
     def load_language_setting(self):
         # Versuche, die Sprache aus der Konfigurationsdatei zu laden
         try:
-            with open(self.CONFIG_FILE, "r", encoding="utf-8") as f:
+            with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
                 config = json.load(f)
                 
                 return config.get("language", "de")  # Standardmäßig Deutsch, wenn nichts gesetzt ist
@@ -1110,12 +1094,12 @@ class TWRPBackupRestoreApp:
 
     def save_language_setting(self):
         # Speichere die aktuelle Sprache in der Konfigurationsdatei
-        with open(self.CONFIG_FILE, "w", encoding="utf-8") as f:
+        with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
             json.dump({"language": self.language_code}, f)
 
     def load_translations(self):
         # Lade alle Übersetzungen aus der JSON-Datei
-        with open("translations.json", "r", encoding="utf-8") as f:
+        with open("translations.json", "r+", encoding="utf-8") as f:
             return json.load(f)
 
     def get_texts(self, language_code):
@@ -1258,41 +1242,11 @@ class TWRPBackupRestoreApp:
                 self.texts['Zugriff auf die Registrierungsdatenbank'],
             ]
 
+            self.update_label()
         
-        
-            info_text = (
-                f"\n\n{self.texts['Hersteller']}: {self.manufacturer}\n"
-                f"{self.texts['device_model']}: {self.model}\n"
-                f"{self.texts['android_version']}: {self.version}\n"
-                f"{self.texts['cpu_architecture']}: {self.cpu_abi}\n"
-                f"{self.texts['cpu_cores']}: {self.cpu_cores}\n\n"
-                f"\n---- {self.texts['display']} ----\n"
-                f"{self.texts['display_resolution']}: {self.display_auflösung}\n"
-                f"{self.texts['pixel_density']}: {self.pixeldichte}\n"
-                f"{self.texts['brightness']}: {self.display_helligkeit}\n"
-                f"\n---- {self.texts['storage']} ----\n"
-                f"{self.texts['total_storage']}: {self.total_gb:.2f} GB\n"
-                f"{self.texts['used_storage']}: {self.used_gb:.2f} GB\n"
-                f"{self.texts['free_storage']}: {self.available_gb:.2f} GB\n"
-                f"\n---- {self.texts['ram']} ----\n"
-                f"{self.texts['total_ram']}: {self.total_ram:.2f} MB\n"
-                f"{self.texts['free_ram']}: {self.free_ram:.2f} MB\n"
-                f"{self.texts['available_ram']}: {self.available_ram:.2f} MB\n"
-                f"\n---- {self.texts['network_sim']} ----\n"
-                f"{self.texts['sim_card_status']}: {self.sim_state}\n"
-                f"{self.texts['sim_card_provider']}: {self.sim_host}\n"
-                f"{self.texts['wifi']}: {self.ip_info}\n"
-                f"\n---- {self.texts['bluetooth']} ----\n"
-                f"{self.texts['bluetooth_status']}: {self.bluetooth_status}\n"     
-                f"{self.texts['connected_devices']}: {', '.join(self.bluetooth_devices) if self.bluetooth_devices else self.texts['no_connected_devices']}\n"
-                f"\n---- {self.texts['battery']} ----\n"
-                f"\n{self.battery_info}\n"
-            )
 
-            self.info_label.config(state="normal")
-            self.info_label.delete("1.0", tk.END)
-            self.info_label.insert(tk.END, info_text)
-            self.info_label.config(state="disabled")
+
+
         
         except Exception as e:
             # Optional: Fehlerprotokollierung oder -benachrichtigung
@@ -1312,20 +1266,19 @@ class TWRPBackupRestoreApp:
             self.restart_program()
 
 
-    def wrestart_program(self):
-        """Callback-Funktion für den Button."""
-        if self.restarter.restart_program():
-            pass
-        else:
-            pass
+
 
     def restart_program(self):
         # Das aktuelle Skript neu starten
         self.switch_language()
         self.update_texts()
-        
         self.device_info()
-        os.execv(sys.executable, ['python'] + sys.argv)
+        
+        if not ctypes.windll.shell32.IsUserAnAdmin():
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+            sys.exit()
+        else:
+            os.execv(sys.executable, ['python'] + sys.argv)
         
        
 
@@ -3443,7 +3396,7 @@ class TWRPBackupRestoreApp:
             # SIM-Karten-Informationen abrufen
             self.sim_state = subprocess.check_output([adb_path, "shell", "getprop", "gsm.sim.state"], text=True).strip()
             self.sim_host = subprocess.check_output([adb_path, "shell", "getprop", "gsm.sim.operator.alpha"], text=True).strip()
-            self.ip_info = subprocess.check_output([adb_path, "shell", "ip", "address", "show", "wlan0"], text=True).strip()
+            
 
             # Display-Infos
             self.display_auflösung = subprocess.check_output([adb_path, "shell", "wm", "size"], text=True).strip()
@@ -3479,41 +3432,45 @@ class TWRPBackupRestoreApp:
             pass
 
     def update_label(self):
-
-        info_text = (
-                f"\n\n{self.texts['Hersteller']}: {self.manufacturer}\n"
-                f"{self.texts['device_model']}: {self.model}\n"
-                f"{self.texts['android_version']}: {self.version}\n"
-                f"{self.texts['cpu_architecture']}: {self.cpu_abi}\n"
-                f"{self.texts['cpu_cores']}: {self.cpu_cores}\n\n"
-                f"\n---- {self.texts['display']} ----\n"
-                f"{self.texts['display_resolution']}: {self.display_auflösung}\n"
-                f"{self.texts['pixel_density']}: {self.pixeldichte}\n"
-                f"{self.texts['brightness']}: {self.display_helligkeit}\n"
-                f"\n---- {self.texts['storage']} ----\n"
-                f"{self.texts['total_storage']}: {self.total_gb:.2f} GB\n"
-                f"{self.texts['used_storage']}: {self.used_gb:.2f} GB\n"
-                f"{self.texts['free_storage']}: {self.available_gb:.2f} GB\n"
-                f"\n---- {self.texts['ram']} ----\n"
-                f"{self.texts['total_ram']}: {self.total_ram:.2f} MB\n"
-                f"{self.texts['free_ram']}: {self.free_ram:.2f} MB\n"
-                f"{self.texts['available_ram']}: {self.available_ram:.2f} MB\n"
-                f"\n---- {self.texts['network_sim']} ----\n"
-                f"{self.texts['sim_card_status']}: {self.sim_state}\n"
-                f"{self.texts['sim_card_provider']}: {self.sim_host}\n"
-                f"{self.texts['wifi']}: {self.ip_info}\n"
-                f"\n---- {self.texts['bluetooth']} ----\n"
-                f"{self.texts['bluetooth_status']}: {self.bluetooth_status}\n"     
-                f"{self.texts['connected_devices']}: {', '.join(self.bluetooth_devices) if self.bluetooth_devices else self.texts['no_connected_devices']}\n"
-                f"\n---- {self.texts['battery']} ----\n"
-                f"\n{self.battery_info}\n"
-
-            )
-
-        self.info_label.config(state="normal")
-        self.info_label.delete("1.0", tk.END)
-        self.info_label.insert(tk.END, info_text)
         self.info_label.config(state="disabled")
+        try:
+            info_text = (
+                    f"\n\n{self.texts['Hersteller']}: {self.manufacturer}\n"
+                    f"{self.texts['device_model']}: {self.model}\n"
+                    f"{self.texts['android_version']}: {self.version}\n"
+                    f"{self.texts['cpu_architecture']}: {self.cpu_abi}\n"
+                    f"{self.texts['cpu_cores']}: {self.cpu_cores}\n\n"
+                    f"\n---- {self.texts['display']} ----\n"
+                    f"{self.texts['display_resolution']}: {self.display_auflösung}\n"
+                    f"{self.texts['pixel_density']}: {self.pixeldichte}\n"
+                    f"{self.texts['brightness']}: {self.display_helligkeit}\n"
+                    f"\n---- {self.texts['storage']} ----\n"
+                    f"{self.texts['total_storage']}: {self.total_gb:.2f} GB\n"
+                    f"{self.texts['used_storage']}: {self.used_gb:.2f} GB\n"
+                    f"{self.texts['free_storage']}: {self.available_gb:.2f} GB\n"
+                    f"\n---- {self.texts['ram']} ----\n"
+                    f"{self.texts['total_ram']}: {self.total_ram:.2f} MB\n"
+                    f"{self.texts['free_ram']}: {self.free_ram:.2f} MB\n"
+                    f"{self.texts['available_ram']}: {self.available_ram:.2f} MB\n"
+                    f"\n---- {self.texts['network_sim']} ----\n"
+                    f"{self.texts['sim_card_status']}: {self.sim_state}\n"
+                    f"{self.texts['sim_card_provider']}: {self.sim_host}\n"
+                    
+                    f"\n---- {self.texts['bluetooth']} ----\n"
+                    f"{self.texts['bluetooth_status']}: {self.bluetooth_status}\n"     
+                    f"{self.texts['connected_devices']}: {', '.join(self.bluetooth_devices) if self.bluetooth_devices else self.texts['no_connected_devices']}\n"
+                    f"\n---- {self.texts['battery']} ----\n"
+                    f"\n{self.battery_info}\n"
+
+                )
+        
+            self.info_label.config(state="normal")
+            self.info_label.delete("1.0", tk.END)
+            self.info_label.insert(tk.END, info_text)
+            self.info_label.config(state="disabled")
+
+        except:
+            pass
 
     def update_info(self):
         self.info_label.config(text="info_text")

@@ -3,7 +3,7 @@ from cx_Freeze import setup, Executable
 build_exe_options = {
     "packages": [
         "json", "shutil", "socket", "subprocess", "sys", "threading", "os", "re", "tkinter", "time",
-        "plyer", "psutil", "requests", "pygame", "zipfile", "ctypes", "PIL", "cv2"
+        "plyer", "psutil", "requests", "numpy", "imageio", "zipfile", "ctypes", "PIL", "cv2"
     ],
     
     "include_files": [

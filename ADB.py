@@ -15,7 +15,6 @@ import psutil
 from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 import requests
-import pygame
 import zipfile
 import ctypes
 from PIL import Image, ImageTk
@@ -26,82 +25,164 @@ ADB_URL = "https://dl.google.com/android/repository/platform-tools-latest-window
 ADB_FOLDER = "platform-tools"
 adb_path = r"platform-tools\adb.exe"
 
+import tkinter as tk
+import cv2
+from PIL import Image, ImageTk
+import threading
+import time
 
+class WelcomeVideoPlayer:
+    def __init__(self, video_path):
+        self.video_path = video_path  # Pfad zum Video
+        self.cap = None               # VideoCapture-Objekt
+        self.window = None            # Tkinter-Fenster
+        self.label = None             # Label für das Video
+        self.is_playing = False       # Flag für die Wiedergabe
+
+    def play(self):
+        # Videoquelle öffnen
+        self.cap = cv2.VideoCapture(self.video_path)
+
+        if not self.cap.isOpened():
+            
+            return
+
+        # Tkinter-Fenster erstellen ohne Titelleiste
+        self.window = tk.Tk()
+        self.window.overrideredirect(True)  # Fenster ohne Titel und Rahmen
+
+        # Berechne die Bildschirmgröße
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+
+        # Setze die Größe des Fensters auf die Video-Größe
+        video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # Setze die Fensterposition auf die Mitte des Bildschirms
+        x = (screen_width // 2) - (video_width // 2)
+        y = (screen_height // 2) - (video_height // 2)
+        self.window.geometry(f"{video_width}x{video_height}+{x}+{y}")
+
+        # Label für das Video
+        self.label = tk.Label(self.window)
+        self.label.pack(fill=tk.BOTH, expand=True)  # Fülle den gesamten Bereich
+
+        # Start der Video-Wiedergabe
+        self.is_playing = True
+        self.update_frame()
+        self.window.mainloop()
+
+    def update_frame(self):
+        if self.is_playing:
+            ret, frame = self.cap.read()
+            if ret:
+                # Frame von BGR nach RGB konvertieren
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # Frame in ein Bild umwandeln
+                img = Image.fromarray(frame)
+                imgTk = ImageTk.PhotoImage(image=img)
+
+                # Bild im Label aktualisieren
+                self.label.imgTk = imgTk  # Referenz halten, um Garbage Collection zu vermeiden
+                self.label.configure(image=imgTk)
+
+                # Wartezeit für das nächste Frame
+                self.label.after(30, self.update_frame)  # Etwa 30 FPS
+            else:
+                self.is_playing = False
+                self.cap.release()
+                self.window.destroy()  # Schließe das Fenster, wenn das Video zu Ende ist
 
 def load_main_program():
-    pass
+    
+    time.sleep(2)
+    
 
-# Funktion zum Abspielen des Willkommensvideos
-def play_welcome_screen():
-    # Videoquelle und Pfad
-    video_path = r"img\Willkommen_Screen.mp4"
-    cap = cv2.VideoCapture(video_path)
+# Hauptprogramm
+if __name__ == "__main__":
+    video_path = r"img\Willkommen_Screen.mp4"  # Pfad zum Video
+    player = WelcomeVideoPlayer(video_path)
 
-    # Überprüfen, ob das Video erfolgreich geladen wurde
-    if not cap.isOpened():
-        
-        exit()
+    # Starte das Hauptprogramm im Hintergrund
+    main_program_thread = threading.Thread(target=load_main_program)
+    main_program_thread.start()
 
-    # Videogröße bestimmen
-    video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # Spiele den Willkommensbildschirm ab
+    player.play()
 
-    # Erstelle ein rahmenloses Fenster in Pygame
-    screen = pygame.display.set_mode((video_width, video_height), pygame.NOFRAME)
-    pygame.display.set_caption("Willkommen")
+    # Warten, bis das Hauptprogramm geladen wurde
+    main_program_thread.join()
 
-    # Frame-Rate des Videos
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_duration = 1 / fps  # Dauer eines Frames
-
-    # Schleife zum Abspielen des Videos
-    running = True
-    while running:
-        ret, frame = cap.read()  # Nächsten Frame lesen
-        if not ret:
-            break  # Beende die Schleife, wenn das Video zu Ende ist
-
-        # Konvertiere den Frame von OpenCV (BGR) in Pygame (RGB)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = pygame.surfarray.make_surface(frame.swapaxes(0, 1))  # Konvertiere in Pygame-Oberfläche
-
-        # Zeige den Frame in Pygame an
-        screen.blit(frame, (0, 0))
-        pygame.display.update()
-
-        # Überprüfen, ob Escape gedrückt wurde oder das Fenster geschlossen wird
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:  # Schließen, wenn ESC gedrückt wird
-                    running = False
-
-        # Warte die entsprechende Zeit basierend auf der Frame-Rate
-        time.sleep(frame_duration)
-
-    # Videoquelle freigeben und Pygame beenden
-    cap.release()
-    pygame.quit()
+    
 
 
 
-# Initialisiere Pygame
-pygame.init()
 
-# Starte das Hauptprogramm im Hintergrund
-main_program_thread = threading.Thread(target=load_main_program)
-main_program_thread.start()
+class WelcomeVideoPlayer:
+    def __init__(self, video_path, main_ui):
+        self.video_path = video_path       # Pfad zum Video
+        self.main_ui = main_ui             # Instanz der Hauptklasse
+        self.cap = None                    # VideoCapture-Objekt
+        self.window = None                 # Tkinter-Fenster
+        self.label = None                  # Label für das Video
+        self.is_playing = False            # Flag für die Wiedergabe
 
-# Spiele den Willkommensbildschirm ab (dieser blockiert den Hauptthread)
-play_welcome_screen()
+    def play(self):
+        # Videoquelle öffnen
+        self.cap = cv2.VideoCapture(self.video_path)
 
-# Warten, bis das Hauptprogramm geladen wurde, bevor es startet
-main_program_thread.join()
+        if not self.cap.isOpened():
+            print("Fehler beim Laden des Videos.")
+            return
 
-# Hier kannst du dein Hauptprogramm nach dem Willkommensbildschirm starten
+        # Tkinter-Fenster erstellen ohne Titelleiste
+        self.window = tk.Tk()
+        self.window.overrideredirect(True)  # Fenster ohne Titel und Rahmen
 
-load_main_program()
+        # Berechne die Bildschirmgröße
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+
+        # Setze die Größe des Fensters auf die Video-Größe
+        video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # Setze die Fensterposition auf die Mitte des Bildschirms
+        x = (screen_width // 2) - (video_width // 2)
+        y = (screen_height // 2) - (video_height // 2)
+        self.window.geometry(f"{video_width}x{video_height}+{x}+{y}")
+
+        # Label für das Video
+        self.label = tk.Label(self.window)
+        self.label.pack(fill=tk.BOTH, expand=True)  # Fülle den gesamten Bereich
+
+        # Start der Video-Wiedergabe
+        self.is_playing = True
+        self.update_frame()
+        self.window.mainloop()
+
+    def update_frame(self):
+        if self.is_playing:
+            ret, frame = self.cap.read()
+            if ret:
+                # Frame von BGR nach RGB konvertieren
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # Frame in ein Bild umwandeln
+                img = Image.fromarray(frame)
+                imgTk = ImageTk.PhotoImage(image=img)
+
+                # Bild im Label aktualisieren
+                self.label.imgTk = imgTk  # Referenz halten, um Garbage Collection zu vermeiden
+                self.label.configure(image=imgTk)
+
+                # Wartezeit für das nächste Frame
+                self.label.after(30, self.update_frame)  # Etwa 30 FPS
+            else:
+                self.is_playing = False
+                self.cap.release()
+                self.window.destroy()  # Schließe das Fenster, wenn das Video zu Ende ist
+                self.main_ui.show() 
 
 class PlaceholderEntry(tk.Entry):
     def __init__(self, master=None, placeholder="", validate_func=None, **kwargs):
@@ -149,6 +230,8 @@ class TWRPBackupRestoreApp:
         self.master.geometry("1000x740")
         self.search_var = tk.StringVar()
         self.apktool_path = r"apktool.jar"
+
+
         
         self.icon = PhotoImage(file="img/android.png")  # Pfad zu deinem Icon-Bild
         self.master.iconphoto(False, self.icon)
@@ -1088,9 +1171,9 @@ class TWRPBackupRestoreApp:
             with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
                 config = json.load(f)
                 
-                return config.get("language", "de")  # Standardmäßig Deutsch, wenn nichts gesetzt ist
+                return config.get("language", "en")  # Standardmäßig Deutsch, wenn nichts gesetzt ist
         except (FileNotFoundError, json.JSONDecodeError):
-            return "de"  # Standardmäßig Deutsch
+            return "en"  # Standardmäßig Deutsch
 
     def save_language_setting(self):
         # Speichere die aktuelle Sprache in der Konfigurationsdatei

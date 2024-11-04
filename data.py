@@ -14,7 +14,7 @@ import zipfile
 sort_options = ["Name", "Datum", "Größe"]
 deleted_logs = {}  # Dictionary, um gelöschte Logs nach Season zu speichern
 current_season = 1  
-ADB_PATH = (R"platform-tools\adb.exe")
+ADB_PATH = (r"platform-tools\adb.exe")
 editor_window = None
 text_editor = None
 download_ico = None
@@ -468,7 +468,7 @@ def run_adb_command(command):
 def list_files(directory):
     """Zeige die Dateien eines Verzeichnisses auf dem Handy an."""
     directory = directory.replace(" ", "\\ ")  # Ersetze Leerzeichen für den Shell-Befehl
-    command = f'adb shell ls -pa "{directory}"'
+    command = f'{ADB_PATH} shell ls -pa "{directory}"'
 
     output = run_adb_command(command)  # Führe den Befehl aus und erhalte die Ausgabe
 
@@ -565,6 +565,8 @@ def on_treeview_select(event):
     for item in selected_items:
         selected_item_text = directory_tree.item(item, "text")
         selected_files_to_copy.append(selected_item_text)
+    
+    
        
 
 def copy_files(local_path):
@@ -592,8 +594,8 @@ def start_copy(local_path):
             os.makedirs(destination_dir)
 
         # Führe adb pull aus, um die Dateien zu kopieren
-        command = ['adb', 'root', 'pull', source_path, destination_path]      
-        command = ['adb', 'pull', source_path, destination_path]
+        command = [ADB_PATH, 'root', 'pull', source_path, destination_path]      
+        command = [ADB_PATH, 'pull', source_path, destination_path]
         output = run_adb_command(command)
 
         # Füge hier Debugging-Ausgaben hinzu
@@ -634,7 +636,7 @@ def Delete_files():
 
 
         # Führe adb pull aus, um die Dateien zu kopieren
-        command = ['adb', 'shell', 'rm', '-rf', source_path]
+        command = [ADB_PATH, 'shell', 'rm', '-rf', source_path]
         output = run_adb_command(command)
         
         # Füge hier Debugging-Ausgaben hinzu
@@ -667,7 +669,7 @@ def edit_files():
         source_path2 = file
 
         # Führe adb shell cat aus, um die Datei zu kopieren
-        command = ['adb', 'shell', 'cat', source_path]
+        command = [ADB_PATH, 'shell', 'cat', source_path]
         output = run_adb_command(command)
 
         # Anzeige des Dateinamens und der Trennlinie
@@ -722,7 +724,7 @@ def prop_files():
         source_path1 = f'"{source_path}"'  # Pfad in Anführungszeichen für ADB-Befehl
         
         # Hole die Dateigröße in Kilobytes über den ADB-Befehl
-        command = ['adb', 'shell', 'du', '-s', source_path1]
+        command = [ADB_PATH, 'shell', 'du', '-s', source_path1]
 
         try:
             output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode().strip()
@@ -949,15 +951,15 @@ def comp_files(local_path="/sdcard", archive_name="cool", archive_format="tar"):
     try:
         # Erstelle den ADB-Befehl basierend auf dem ausgewählten Format
         if archive_format == "tar":
-            command = f"adb shell tar -cvf {local_path}/{archive_name}.tar {current_directory}{files_to_compress}"
+            command = f"{ADB_PATH} shell tar -cvf {local_path}/{archive_name}.tar {current_directory}{files_to_compress}"
         elif archive_format == "gz":
-            command = f"adb shell busybox gzip -f {current_directory}{files_to_compress}"
+            command = f"{ADB_PATH} shell busybox gzip -f {current_directory}{files_to_compress}"
 
         if archive_format == "bz2":
-            command = f"adb shell tar -cvjf {local_path}/{archive_name}.bz2 {current_directory}{files_to_compress}"
+            command = f"{ADB_PATH} shell tar -cvjf {local_path}/{archive_name}.bz2 {current_directory}{files_to_compress}"
         
         if archive_format == "xz":
-           command = f"adb shell tar -cvf {local_path}/{archive_name}.xz {current_directory}{files_to_compress}"
+           command = f"{ADB_PATH} shell tar -cvf {local_path}/{archive_name}.xz {current_directory}{files_to_compress}"
 
         # Protokolliere den Befehl zur Überprüfung
         
@@ -1123,12 +1125,30 @@ def show_context_menu(event):
         # Hole das ausgewählte Element
         selected_item = directory_tree.selection()[0]
         selected_item_text = directory_tree.item(selected_item, "text")
+        
+        last_index = context_menu.index("end")
+        if last_index is not None:
+            # Durchsucht alle vorhandenen Einträge und löscht das `edit`-Kommando, wenn es existiert
+            for i in range(last_index + 1):
+                if context_menu.type(i) == "command" and context_menu.entrycget(i, "label") == texts['edit']:
+                    context_menu.delete(i)
+                    break
 
+        if selected_item_text.endswith(".txt"):
+            context_menu.add_command(label=texts['edit'], command=edit_files)
+
+        # Kontextmenü nur anzeigen, wenn es mindestens einen Eintrag enthält
+        if context_menu.index("end") is not None:
+            context_menu.post(event.x_root, event.y_root)  # Menü anzeigen
+            
+
+       
         # Wenn es sich um eine Datei handelt, zeige das Kontextmenü
         if selected_item_text and not selected_item_text == '..':
             context_menu.post(event.x_root, event.y_root)
     except IndexError:
         context_menu.post(event.x_root, event.y_root)
+    context_menu.unpost()
 
 
 
@@ -1150,7 +1170,7 @@ def push_copy(selected_file):
         selected_file = f'"{selected_file}'
 
     # Führe adb push aus, um die Datei zu kopieren
-    command = ['adb', 'push', selected_file, current_directory]
+    command = [ADB_PATH, 'push', selected_file, current_directory]
     output = run_adb_command(command)
 
     # Debugging-Ausgabe
@@ -1215,7 +1235,7 @@ def create_directory():
 
     # Führe adb push aus, um die Datei zu kopieren
     
-    command = ['adb', 'shell', 'mkdir', f'"{path}/{name}"']
+    command = [ADB_PATH, 'shell', 'mkdir', f'"{path}/{name}"']
 
     output = run_adb_command(command)
 
@@ -1270,7 +1290,7 @@ def rename_files():
         destination_path = os.path.join(current_directory, new_name)
 
         # Führe adb shell mv aus, um die Dateien umzubenennen
-        command = ['adb', 'shell', 'mv', f'"{source_path}"', f'"{destination_path}"']
+        command = [ADB_PATH, 'shell', 'mv', f'"{source_path}"', f'"{destination_path}"']
         output = run_adb_command(command)
 
         # Füge hier Debugging-Ausgaben hinzu
@@ -1328,7 +1348,7 @@ def get_file_properties(file_path):
     """Erhalte Dateieigenschaften (Größe, Datum) von einem Gerät über ADB."""
     try:
         # ADB Befehl, um Dateieigenschaften zu erhalten
-        command = f"adb shell ls -l '{file_path}'"
+        command = f"{ADB_PATH} shell ls -l '{file_path}'"
         result = subprocess.run(command, capture_output=True, text=True, shell=True)
 
         if result.returncode == 0:
@@ -1428,9 +1448,9 @@ context_menu.add_separator()
 context_menu.add_command(label=texts['createFolder'], command=open_toplevel)
 context_menu.add_command(label=texts['Rename'], command=rename_toplevel)
 context_menu.add_separator()
-context_menu.add_command(label=texts['edit'], command=edit_files)
 context_menu.add_command(label=texts['compress'], command=open_options_window)
 context_menu.add_command(label=texts['properties'], command=create_top_level) 
+
 # Erstelle einen Button, um in das vorherige Verzeichnis zu gehen
 back_button = tk.Button(root, text=texts['back'], command=on_back_button_click, bg="#666666", fg="white", font=("Arial", 12))
 back_button.pack(side="right",anchor="ne", padx=5)

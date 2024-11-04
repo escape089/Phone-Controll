@@ -133,7 +133,7 @@ class WelcomeVideoPlayer:
         self.cap = cv2.VideoCapture(self.video_path)
 
         if not self.cap.isOpened():
-            print("Fehler beim Laden des Videos.")
+            
             return
 
         # Tkinter-Fenster erstellen ohne Titelleiste
@@ -1062,7 +1062,7 @@ class TWRPBackupRestoreApp:
         while not recovery_mode_detected:
             try:
                 # Prüfen, ob das Gerät im Recovery-Modus ist
-                command = "adb shell getprop ro.boot.mode"
+                command = f"{adb_path} shell getprop ro.boot.mode"
                 boot_mode = subprocess.check_output(command, shell=True).decode('utf-8').strip()
 
                 if boot_mode == "":
@@ -1102,11 +1102,11 @@ class TWRPBackupRestoreApp:
 
             # Kopiere die ZIP-Datei auf das Gerät
             self.console_output.insert(tk.END, f"Kopiere {zip_file_name} auf das Gerät...\n")
-            subprocess.run(f"adb push \"{zip_file}\" \"{destination_path}\"", shell=True)
+            subprocess.run(f"{adb_path} push \"{zip_file}\" \"{destination_path}\"", shell=True)
 
             # Flashen der ZIP-Datei über TWRP
             self.console_output.insert(tk.END, f"Flashe {zip_file_name}...\n")
-            subprocess.run(f"adb shell twrp install \"{destination_path}\"", shell=True)
+            subprocess.run(f"{adb_path} shell twrp install \"{destination_path}\"", shell=True)
 
             self.console_output.insert(tk.END, "Flashing abgeschlossen!\n")
 
@@ -1145,7 +1145,7 @@ class TWRPBackupRestoreApp:
             try:
                 # ADB Befehl zum Formatieren der Datenpartition
                
-                subprocess.run(f"adb shell twrp format /data", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                subprocess.run(f"{adb_path} shell twrp format /data", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 # Erfolgreich informiert
                 messagebox.showinfo("Erfolg", "Die Datenpartition wurde erfolgreich formatiert.")
             except Exception as e:
@@ -1157,8 +1157,8 @@ class TWRPBackupRestoreApp:
             try:
                 # ADB Befehl zum Formatieren der Datenpartition
                
-                subprocess.run(f"adb shell twrp format /dalvik", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                subprocess.run(f"adb shell twrp format /cache", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                subprocess.run(f"{adb_path} shell twrp format /dalvik", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                subprocess.run(f"{adb_path} shell twrp format /cache", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 # Erfolgreich informiert
                 messagebox.showinfo("Erfolg", "Die Datenpartition wurde erfolgreich formatiert.")
             except Exception as e:
@@ -1333,7 +1333,7 @@ class TWRPBackupRestoreApp:
         
         except Exception as e:
             # Optional: Fehlerprotokollierung oder -benachrichtigung
-            print(f"Fehler beim Erstellen des Info-Textes: {str(e)}")
+            pass
             # Hier könnte man auch eine Benachrichtigung für den Benutzer hinzufügen
 
         
@@ -1466,14 +1466,14 @@ class TWRPBackupRestoreApp:
 
             if selected_apps:
                 app_name = selected_apps[0]
-                command_package = f"adb shell pm path {app_name}"
+                command_package = f"{adb_path} shell pm path {app_name}"
                 output_package = subprocess.check_output(command_package, shell=True).decode().strip()
 
                 if output_package:
                     package_name_value = output_package.split(":")[1].strip()
 
                     # Verwende du, um die Größe der APK zu ermitteln
-                    command_size = f"adb shell du -b {package_name_value}"  # Verwende -b für Bytes
+                    command_size = f"{adb_path} shell du -b {package_name_value}"  # Verwende -b für Bytes
                     output_size = subprocess.check_output(command_size, shell=True).decode().strip()
 
                     only_name = app_name.split('.')
@@ -1605,7 +1605,7 @@ class TWRPBackupRestoreApp:
     def get_battery_info(self):
         """Funktion zum Abrufen des Akkustatus über ADB."""
         try:
-            result = subprocess.check_output(['adb', 'shell', 'dumpsys', 'battery'], encoding='utf-8')
+            result = subprocess.check_output([adb_path, 'shell', 'dumpsys', 'battery'], encoding='utf-8')
             battery_info = {}
             for line in result.splitlines():
                 if 'level' in line:
@@ -1888,7 +1888,7 @@ class TWRPBackupRestoreApp:
         """Lädt die Benutzer-APKs von ADB und zeigt sie im Treeview an."""
         try:
             # ADB Befehl, um nur User-Apps zu erhalten
-            result = subprocess.run(['adb', 'shell', 'pm', 'list', 'packages', '-3'], capture_output=True, text=True)
+            result = subprocess.run([adb_path, 'shell', 'pm', 'list', 'packages', '-3'], capture_output=True, text=True)
             
             if result.returncode != 0:
                 #self.console_output.insert("ADB Fehler: " + result.stderr.strip())
@@ -1908,7 +1908,7 @@ class TWRPBackupRestoreApp:
         """Lädt die Benutzer-APKs von ADB und zeigt sie im Treeview an."""
         try:
             # ADB Befehl, um nur User-Apps zu erhalten
-            result = subprocess.run(['adb', 'shell', 'pm', 'list', 'packages'], capture_output=True, text=True)
+            result = subprocess.run([adb_path, 'shell', 'pm', 'list', 'packages'], capture_output=True, text=True)
             if result.returncode != 0:
                 raise Exception("ADB Fehler: " + result.stderr.strip())
 
@@ -1927,7 +1927,7 @@ class TWRPBackupRestoreApp:
         """Lädt die Benutzer-APKs von ADB und zeigt sie im Treeview an."""
         try:
             # ADB Befehl, um nur User-Apps zu erhalten
-            result = subprocess.run(['adb', 'shell', 'pm', 'list', 'packages', '-s'], capture_output=True, text=True)
+            result = subprocess.run([adb_path, 'shell', 'pm', 'list', 'packages', '-s'], capture_output=True, text=True)
             if result.returncode != 0:
                 raise Exception("ADB Fehler: " + result.stderr.strip())
 
@@ -2126,7 +2126,7 @@ class TWRPBackupRestoreApp:
         elif selected_action == self.texts['Zugriff auf die Registrierungsdatenbank']:
             self.load_access_registry_apps()
         else:
-            print("Unbekannte Option:", selected_action)
+            pass
         
         
 
@@ -2259,7 +2259,7 @@ class TWRPBackupRestoreApp:
         elif selected_action == self.texts['Zugriff auf die Registrierungsdatenbank']:
             self.unload_access_registry_apps()
         else:
-            print("Unbekannte Option:", selected_action)
+            pass
         
 
     def execute_action(self, selected_action):
@@ -2690,7 +2690,7 @@ class TWRPBackupRestoreApp:
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
             
             # ADB-Befehl zum Entfernen der Berechtigung
-            result = subprocess.run(['adb', 'shell', 'pm', 'grant', selected_app, permission], capture_output=True, text=True)
+            result = subprocess.run([adb_path, 'shell', 'pm', 'grant', selected_app, permission], capture_output=True, text=True)
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['Erfolgt1']} {selected_app}\n")
             else:
@@ -2709,7 +2709,7 @@ class TWRPBackupRestoreApp:
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
             
             # ADB-Befehl zum Entfernen der Berechtigung
-            result = subprocess.run(['adb', 'shell', 'pm', 'revoke', selected_app, permission], capture_output=True, text=True)
+            result = subprocess.run([adb_path, 'shell', 'pm', 'revoke', selected_app, permission], capture_output=True, text=True)
             
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['Erfolgt2']} {selected_app}\n")
@@ -2734,7 +2734,7 @@ class TWRPBackupRestoreApp:
             selected_app = self.listbox_apks.item(selected_app_id)['values'][0]  # Hier wird der Wert (z.B. Paketname) abgerufen
 
             # ADB Befehl zum Starten der App
-            result = subprocess.run(['adb', 'shell', 'monkey', '-p', selected_app, '-c', 'android.intent.category.LAUNCHER', '1'], capture_output=True, text=True)
+            result = subprocess.run([adb_path, 'shell', 'monkey', '-p', selected_app, '-c', 'android.intent.category.LAUNCHER', '1'], capture_output=True, text=True)
             if result.returncode == 0:
                 self.console_output.insert(tk.END, f"{self.texts['start_erfolg']} {selected_app}\n")
             else:
@@ -2754,7 +2754,7 @@ class TWRPBackupRestoreApp:
 
             # Paketname aus dem Treeview extrahieren
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
-            command = f"adb shell pm clear {selected_app}"
+            command = f"{adb_path} shell pm clear {selected_app}"
 
             # Ausführen des ADB-Befehls
             result = subprocess.run(command.split(), capture_output=True, text=True)
@@ -2776,7 +2776,7 @@ class TWRPBackupRestoreApp:
 
             # Paketname aus dem Treeview extrahieren
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
-            command = f"adb shell am force-stop {selected_app}"
+            command = f"{adb_path} shell am force-stop {selected_app}"
 
             # Ausführen des ADB-Befehls
             result = subprocess.run(command.split(), capture_output=True, text=True)
@@ -2799,7 +2799,7 @@ class TWRPBackupRestoreApp:
 
             # Paketname aus dem Treeview extrahieren
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
-            command = f"adb shell pm clear {selected_app}"
+            command = f"{adb_path} shell pm clear {selected_app}"
 
             # Ausführen des ADB-Befehls
             result = subprocess.run(command.split(), capture_output=True, text=True)
@@ -2925,7 +2925,7 @@ class TWRPBackupRestoreApp:
 
     def get_partitions(self):
         """Ermittelt alle Partitionen auf dem Gerät"""
-        result = subprocess.run([self.adb, 'shell', 'ls', '/dev/block/by-name/'], capture_output=True, text=True)
+        result = subprocess.run([adb_path, 'shell', 'ls', '/dev/block/by-name/'], capture_output=True, text=True)
         if result.returncode == 0:
             partitions = result.stdout.splitlines()
             return partitions
@@ -3353,7 +3353,7 @@ class TWRPBackupRestoreApp:
 
     def get_current_brightness(self):
         """Holt die aktuelle Helligkeit des Geräts."""
-        adb_command = "adb shell settings get system screen_brightness"
+        adb_command = f"{adb_path} shell settings get system screen_brightness"
         result = subprocess.run(adb_command, shell=True, capture_output=True, text=True)
 
         if result.returncode == 0:
@@ -3369,7 +3369,7 @@ class TWRPBackupRestoreApp:
 
     def set_brightness(self, value):
         """Setzt die Helligkeit auf dem Gerät basierend auf dem Sliderwert."""
-        adb_command = f"adb shell settings put system screen_brightness {value}"
+        adb_command = f"{adb_path} shell settings put system screen_brightness {value}"
         subprocess.run(adb_command, shell=True)
         
 
@@ -3619,9 +3619,9 @@ class TWRPBackupRestoreApp:
 
         if new_password_valid:
             if old_password_valid:  # Wenn sowohl altes als auch neues Passwort vorhanden sind
-                command = f"adb shell locksettings set-password --old '{old_password}' '{new_password}'"
+                command = f"{adb_path} shell locksettings set-password --old '{old_password}' '{new_password}'"
             else:  # Wenn kein altes Passwort angegeben wurde
-                command = f"adb shell locksettings set-password '{new_password}'"
+                command = f"{adb_path} shell locksettings set-password '{new_password}'"
         else:
             self.console_output.insert(tk.END, f"{self.texts['passwort_error1']}\n")
             self.console_output.yview(tk.END)
@@ -3649,9 +3649,9 @@ class TWRPBackupRestoreApp:
 
         if new_password_valid:
             if old_password_valid:  # Wenn sowohl altes als auch neues Passwort vorhanden sind
-                command = f"adb shell locksettings set-pin --old '{old_pin}' '{new_pin}'"
+                command = f"{adb_path} shell locksettings set-pin --old '{old_pin}' '{new_pin}'"
             else:  # Wenn kein altes Passwort angegeben wurde
-                command = f"adb shell locksettings set-pin '{new_pin}'"
+                command = f"{adb_path} shell locksettings set-pin '{new_pin}'"
         else:
             self.console_output.insert(tk.END, f"{self.texts['pin_error1']}\n")
             self.console_output.yview(tk.END)
@@ -4042,7 +4042,7 @@ class TWRPBackupRestoreApp:
         for app in selected_apps:
             try:
                 # ADB-Befehl zum Sichern der App
-                command = f"adb shell pm path {app}"
+                command = f"{adb_path} shell pm path {app}"
                 result = subprocess.run(command.split(), capture_output=True, text=True)
 
                 if result.returncode == 0:
@@ -4053,7 +4053,7 @@ class TWRPBackupRestoreApp:
                     apk_filename = f"{app_name}.apk"  # Erstelle den Namen für die APK-Datei
 
                     # Kopiere die APK zur Backup-Directory mit dem App-Namen
-                    adb_pull_command = f"adb pull {apk_path} {os.path.join(backup_directory, apk_filename)}"
+                    adb_pull_command = f"{adb_path} pull {apk_path} {os.path.join(backup_directory, apk_filename)}"
                     pull_result = subprocess.run(adb_pull_command.split(), capture_output=True)
 
                     if pull_result.returncode == 0:
@@ -4190,8 +4190,8 @@ class TWRPBackupRestoreApp:
         else:
             # Zeige alle Apps, wenn kein Suchbegriff eingegeben wurde
             self.displayed_apps = self.apps.copy()  # Sicherstellen, dass die gesamte Liste verwendet wird
-        self.update_listbox()  # Aktualisiere die Listbox mit den gefilterten Apps
-
+          # Aktualisiere die Listbox mit den gefilterten Apps
+        
 
 
 
@@ -4663,7 +4663,7 @@ class TWRPBackupRestoreApp:
 
                 if result.returncode == 0:
                     # Pull Backup von der SD-Karte
-                    pull_command = ['adb', 'pull', f'/sdcard/TWRP/{backup_name}.img', backup_path]
+                    pull_command = [adb_path, 'pull', f'/sdcard/TWRP/{backup_name}.img', backup_path]
                     pull_result = subprocess.run(pull_command, capture_output=True, text=True)
 
                     if pull_result.returncode == 0:
@@ -4711,17 +4711,17 @@ class TWRPBackupRestoreApp:
                 # Datei zuerst auf das Gerät kopieren
                 local_file_path = os.path.join(self.restore_folder_path)
                 remote_file_path = f"/sdcard/TWRP/BACKUPS/R92X538VD9N/{first_word}"  # Verwendung des ersten Wortes für den Remote-Pfad
-                create = (f"adb shell mkdir /sdcard/TWRP/BACKUPS/R92X538VD9N/")
+                create = (f"{adb_path} shell mkdir /sdcard/TWRP/BACKUPS/R92X538VD9N/")
                 result = subprocess.run(create, capture_output=True, text=True)
                 # Datei auf das Gerät übertragen
-                push_command = f"adb push {local_file_path} {remote_file_path}"
+                push_command = f"{adb_path} push {local_file_path} {remote_file_path}"
                 result = subprocess.run(push_command.split(), capture_output=True, text=True)
                 if result.returncode != 0:
                     self.append_console_output(f"Error {file}: {result.stderr}")
                     continue  # Fahren Sie mit der nächsten Datei fort
 
                 # Hier wird der Wiederherstellungsbefehl ausgeführt
-                restore_command = f"adb shell twrp restore /sdcard/TWRP/BACKUPS/R92X538VD9N/"
+                restore_command = f"{adb_path} shell twrp restore /sdcard/TWRP/BACKUPS/R92X538VD9N/"
                 result = subprocess.run(restore_command.split(), capture_output=True, text=True)
                 if result.returncode == 0:
                     self.append_console_output(f"{file} {self.texts['restore_erfolg']}")

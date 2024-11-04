@@ -1,9 +1,9 @@
 This program uses ADB commands within a Windows application to create backups of partitions and apps, and it includes recovery options. It offers a method to find and back up specific file types, such as images and music, on the device. Additionally, it allows the device to be rebooted into Recovery, Bootloader, or Fastboot mode. Users can install apps, change the device password or PIN, or, if they have root access, fully remove the lock. There are also various other features available. The program is currently in its beta phase.
 
 ### Requirements
-- ADB must be installed on the PC and added to the PATH.
 - BusyBox should be installed on the phone to enable a complete partition backup.
 - Make sure the phone is connected to the PC via USB.
+- Microsoft Visual C++ Redistributable must be installend on PC [Download Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
 ### Features
 - Backup of partitions and apps.

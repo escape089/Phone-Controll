@@ -270,9 +270,25 @@
         "Archive": "Archive",
         "Documente": "Dokumente",
         "Custom": "benutzerdefiniert",
-        "Backup": "Sicherung"
+        "Backup": "Sicherung",
 
-
+        "auto": "Automatisch",
+        "manuel": "Manuell",
+        "nie": "Nie",
+        "no_exe_found": "Keine .exe-Datei im neuesten Release gefunden.",
+        "Update-Check": "Update-Check",
+        "up_todated": "Die aktuelle Version ist auf dem neuesten Stand.",
+        "error3": "Fehler beim Überprüfen auf Updates:",
+        "update_verfügbar": "Update verfügbar",
+        "Version": "Version",
+        "quest": "ist verfügbar. Möchten Sie das Update herunterladen und installieren?",
+        "Unbekannt": "Unbekannt",
+        "d_speed": "Download Fortschritt:",
+        "speed": "Geschwindigkeit:",
+        "zeit": "Verbleibende Zeit:",
+        "download_finish": "Download abgeschlossen",
+        "start_install": "Das Update wurde heruntergeladen. Die Installation beginnt jetzt.",
+        "download_error": "Fehler beim Herunterladen des Updates:"
 
     },
     "en": {
@@ -545,7 +561,25 @@
         "Archive": "Archives",
         "Documente": "Documents",
         "Custom": "Custom",
-        "Backup": "Backup"
+        "Backup": "Backup",
+
+        "auto": "Automatic",
+        "manuel": "Manual",
+        "nie": "Never",
+        "no_exe_found": "No .exe file found in the latest release.",
+        "Update-Check": "Update Check",
+        "up_todated": "The current version is up to date.",
+        "error3": "Error checking for updates:",
+        "update_verfügbar": "Update available",
+        "Version": "Version",
+        "quest": "is available. Do you want to download and install the update?",
+        "Unbekannt": "Unknown",
+        "d_speed": "Download progress:",
+        "speed": "Speed:",
+        "zeit": "Remaining time:",
+        "download_finish": "Download complete",
+        "start_install": "The update has been downloaded. Installation will begin now.",
+        "download_error": "Error downloading the update:"
         
     },    
     "fr": {

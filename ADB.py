@@ -243,6 +243,14 @@ class TWRPBackupRestoreApp:
         self.apps = []
         self.device_label = None
 
+        self.api_url = "https://api.github.com/repos/escape089/Phone-Controll/releases/latest"
+        
+        # Lokale Datei zum Speichern der aktuellen Version
+        self.settings_file = "config.json"
+        
+        # Lade Einstellungen und aktuelle Version
+        self.load_settings()
+
         #Images
 
         self.magisk_folder_path = r"tools/Magisk"  # Pfad zum Magisk-Ordner
@@ -252,6 +260,10 @@ class TWRPBackupRestoreApp:
 
         self.refrash_img = Image.open(r"img\refresh.png")  # Ersetze mit dem Pfad zu deinem Bild
         self.refresh_ico = ImageTk.PhotoImage(self.refrash_img)
+
+        self.original_img = Image.open(r"img\refresh.png")  # Ersetze mit dem Pfad zu deinem Bild
+        self.resized_img = self.original_img.resize((16, 16), Image.LANCZOS)  # Größe ändern auf 100x100 Pixel
+        self.refresh2_ico = ImageTk.PhotoImage(self.resized_img)
 
         self.yes_img = Image.open(r"img\yes.png")  # Ersetze mit dem Pfad zu deinem Bild
         self.yes_ico = ImageTk.PhotoImage(self.yes_img)
@@ -287,9 +299,14 @@ class TWRPBackupRestoreApp:
         self.hotspot_img = Image.open(r"img\hotspot.png")  # Ersetze mit dem Pfad zu deinem Bild
         self.hotspot_ico = ImageTk.PhotoImage(self.hotspot_img)
 
+        self.settings_img = Image.open(r"img\settings.png")  # Ersetze mit dem Pfad zu deinem Bild
+        self.settings_ico = ImageTk.PhotoImage(self.settings_img)
+
 
         self.info_img = Image.open(r"img\info.png")  # Ersetze mit dem Pfad zu deinem Bild
         self.info_ico = ImageTk.PhotoImage(self.info_img)
+
+
 
 
 
@@ -794,6 +811,9 @@ class TWRPBackupRestoreApp:
         # Update Device Info Button
         self.update_device_info_button = tk.Button(master, image=self.refresh_ico, command=self.restart_program)
         self.update_device_info_button.place(relx=0.95, rely=0.1, relwidth=0.04, height=30)
+
+        self.update_device_info_button = tk.Button(master, image=self.settings_ico, command=self.open_settings_window)
+        self.update_device_info_button.place(relx=0.95, rely=0.4, relwidth=0.04, height=30)
        
         # öffnet format frame
         self.open_format_frame_button = tk.Button(master, image=self.müll_ico, command=None)
@@ -930,11 +950,184 @@ class TWRPBackupRestoreApp:
                                 "/data/systemgatekeeper.pin.key", "/data/system/gatekeeper.pattern.key", "/data/system/*.key", "/data/system/applockpin.key"]  # Hier Dateipfade anpassen
         self.update_texts()
         
+        
+
+        if self.settings.get("update_preference", self.texts['manuel']) == self.texts['auto']:
+            self.check_for_updates()
+        
+    def load_settings(self):
+        if os.path.exists(self.settings_file):
+            with open(self.settings_file, "r+") as file:
+                self.settings = json.load(file)
+                self.current_version = self.settings.get("current_version", "1.0")
+        else:
+            self.settings = {
+                "current_version": "1.0",
+                "update_preference": "Manuell"
+            }
+            with open(self.settings_file, "w") as file:
+                json.dump(self.settings, file, indent=4)
+                
+
+    def save_settings(self):
+        with open(self.settings_file, "r+") as file:
+            file.seek(0)
+            json.dump(self.settings, file, indent=4)
+            file.truncate()
+
+    def open_settings_window(self):
+        settings_window = tk.Toplevel(self.master)
+        settings_window.title(self.texts['settings_button'])
+        settings_window.geometry("300x100")
+        settings_window.configure(bg="#2A2A2A")  # Hintergrundfarbe des Einstellungsfensters
+
+        # Styles für ttk
+        style = ttk.Style()
+        style.configure("TLabel", font=("Arial", 12), background="#f0f0f0")
+        style.configure("TButton", font=("Arial", 10), padding=5, background="#2A2A2A")
+        style.map("TButton", background=[('active', '#1976D2')])  # Ändern der Hintergrundfarbe beim Hover
+
+        value_list = [
+            self.texts['auto'],
+            self.texts['manuel'],
+            self.texts['nie']
+        ]
+
+        # Combobox für die Update-Präferenz
+        self.update_combo = ttk.Combobox(settings_window, values=value_list, state="readonly")
+        self.update_combo.place(relx=0.1, rely=0.3)  # Positioniere die Combobox
+        self.update_combo.set(self.settings.get("update_preference", "Manuell"))
+        self.update_combo.bind("<<ComboboxSelected>>", self.update_preference_changed)
+
+        # Button für manuellen Update-Check
+        self.update_button = ttk.Button(settings_window, image=self.refresh2_ico, command=self.start_update_check_thread)
+        self.update_button.place(relx=0.6, rely=0.3)  # Positioniere den Button rechts neben der Combobox
+
+        # Text für die Version
+        self.version_text = f"Version: {self.current_version}"
+        
+        # Label für die Version
+        self.version_label = tk.Label(settings_window, text=self.version_text, bg="#2A2A2A", fg="white")  # Hintergrundfarbe und Textfarbe anpassen
+        self.version_label.place(relx=0.01, rely=0.8)  # Positioniere das Label weiter unten
 
 
-    ############# BATTERIE ##############
+    def update_preference_changed(self, event):
+        selected_preference = self.update_combo.get()
+        self.settings["update_preference"] = selected_preference
+        self.save_settings()
 
 
+    def start_update_check_thread(self):
+        """Startet den Update-Check in einem separaten Thread."""
+        threading.Thread(target=self.check_for_updates, daemon=True).start()
+
+    def check_for_updates(self):
+        try:
+            response = requests.get(self.api_url)
+            response.raise_for_status()
+            release_data = response.json()
+            
+            latest_version = release_data["tag_name"]
+            assets = release_data["assets"]
+            exe_url = None
+            exe_name = None
+            
+            for asset in assets:
+                if asset["name"].endswith(".exe"):
+                    exe_url = asset["browser_download_url"]
+                    exe_name = asset["name"]
+                    break
+            
+            if not exe_url:
+                messagebox.showerror(self.texts['error1'], self.texts['no_exe_found'])
+                return
+            
+            if latest_version > self.settings.get("current_version", "1.0"):
+                self.prompt_update(latest_version, exe_url, exe_name)
+            elif self.settings.get("update_preference", "Manuell") == "Manuell":
+                messagebox.showinfo(self.texts['"Update-Check"'], self.texts['up_todated'])
+        except Exception as e:
+            messagebox.showerror(self.texts['error1'], f"{self.texts['error3']} {e}")
+
+    def prompt_update(self, latest_version, exe_url, exe_name):
+        if messagebox.askyesno(self.texts['update_verfügbar'], f"{self.texts['Version']} {latest_version} {self.texts['quest']}"):
+            # Starten des Downloads in einem separaten Thread
+            threading.Thread(target=self.download_and_install_update, args=(latest_version, exe_url, exe_name), daemon=True).start()
+
+
+    def download_and_install_update(self, latest_version, exe_url, exe_name):
+        try:
+            self.console_output.delete("1.0", tk.END)  # Konsole leeren
+            response = requests.get(exe_url, stream=True)
+            response.raise_for_status()
+            
+            exe_path = os.path.join(os.getcwd(), exe_name)
+            total_size = int(response.headers.get("content-length", 0))
+            start_time = time.time()
+            downloaded_size = 0
+            
+            # Download in kleinen Stücken, Fortschritt und Geschwindigkeit berechnen
+            with open(exe_path, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        file.write(chunk)
+                        downloaded_size += len(chunk)
+                        
+                        # Fortschritt in Prozent
+                        progress_percent = (downloaded_size / total_size) * 100
+                        
+                        # Geschwindigkeit in Bytes/s
+                        elapsed_time = time.time() - start_time
+                        speed_bytes = downloaded_size / elapsed_time if elapsed_time > 0 else 0  # in Bytes/s
+                        
+                        # Umrechnung in KB, MB oder GB
+                        if speed_bytes >= 1024 ** 2:  # Größer oder gleich 1 MB
+                            speed_display = f"{speed_bytes / (1024 ** 2):.2f} MB/s"
+                        elif speed_bytes >= 1024:  # Größer oder gleich 1 KB
+                            speed_display = f"{speed_bytes / 1024:.2f} KB/s"
+                        else:
+                            speed_display = f"{speed_bytes:.2f} Bytes/s"  # In Bytes anzeigen
+                        
+                        # Geschätzte verbleibende Zeit berechnen
+                        remaining_size = total_size - downloaded_size
+                        if speed_bytes > 0:
+                            remaining_time_seconds = remaining_size / speed_bytes
+                            remaining_time_display = self.format_remaining_time(remaining_time_seconds)
+                        else:
+                            remaining_time_display = self.texts['Unbekannt']
+                        
+                        # Fortschritt, Geschwindigkeit und verbleibende Zeit in der Konsole anzeigen
+                        output_text = (f"{self.texts['d_speed']} {progress_percent:.2f}% | "
+                                       f"{self.texts['speed']} {speed_display} | "
+                                       f"{self.texts['zeit']} {remaining_time_display}\n")
+                        self.console_output.delete("1.0", tk.END)  # Leeren, um neuen Text anzuzeigen
+                        self.console_output.insert(tk.END, output_text)
+                        self.console_output.update_idletasks()
+            
+            messagebox.showinfo(self.texts['download_finish'], self.texts['start_install'])
+            
+            # Aktualisieren der Version und Speichern der Einstellungen
+            self.settings["current_version"] = latest_version
+            
+            
+            # Anwendung starten ohne auf die Beendigung zu warten
+            subprocess.Popen(exe_path, creationflags=subprocess.DETACHED_PROCESS)
+            
+
+            
+            
+            self.save_settings()
+            # Optional: Hauptanwendung schließen
+            self.master.after(1000, self.master.quit)
+        except Exception as e:
+            messagebox.showerror(self.texts['error1'], f"{self.texts['download_error']} {e}")
+
+    def format_remaining_time(self, seconds):
+        """Formatierte verbleibende Zeit in Stunden, Minuten und Sekunden."""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        seconds = int(seconds % 60)
+        return f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
 
     def get_device():
         # Hier werden private und öffentliche Schlüssel für die ADB-Verbindung geladen oder erstellt
@@ -1164,21 +1357,32 @@ class TWRPBackupRestoreApp:
             except Exception as e:
                 messagebox.showerror("Fehler", f"Fehler beim Formatieren der Datenpartition: {e}")
 
-
     def load_language_setting(self):
         # Versuche, die Sprache aus der Konfigurationsdatei zu laden
         try:
             with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
                 config = json.load(f)
                 
-                return config.get("language", "en")  # Standardmäßig Deutsch, wenn nichts gesetzt ist
+                return config.get("settings", {}).get("language", "en")  # Standardmäßig Englisch
         except (FileNotFoundError, json.JSONDecodeError):
-            return "en"  # Standardmäßig Deutsch
+            return "en"  # Standardmäßig Englisch
 
     def save_language_setting(self):
         # Speichere die aktuelle Sprache in der Konfigurationsdatei
-        with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
-            json.dump({"language": self.language_code}, f)
+        # Laden der vorhandenen Einstellungen, um sie zu aktualisieren
+        try:
+            with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
+                config = json.load(f)
+                config["settings"]["language"] = self.language_code  # Setze die neue Sprache
+                
+                # Gehe zum Anfang der Datei und überschreibe sie
+                f.seek(0)
+                json.dump(config, f, indent=4)
+                f.truncate()  # Kürze die Datei, um überschüssige Daten zu entfernen
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Wenn die Datei nicht existiert oder nicht lesbar ist, erstelle eine neue
+            with open(self.CONFIG_FILE, "r+", encoding="utf-8") as f:
+                json.dump({"settings": {"language": self.language_code}}, f, indent=4)
 
     def load_translations(self):
         # Lade alle Übersetzungen aus der JSON-Datei
@@ -1792,6 +1996,8 @@ class TWRPBackupRestoreApp:
         # Starte die Datei-Löschung in einem separaten Thread, um die GUI nicht zu blockieren
         thread = threading.Thread(target=delete_files)
         thread.start()
+
+
 
 
     # Funktion, um auf den Recovery-Modus zu warten

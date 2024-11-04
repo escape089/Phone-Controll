@@ -1,1 +1,7 @@
-{"language": "en"}
+{
+    "settings": {
+        "language": "en"
+    },
+    "update_preference": "Automatic",
+    "current_version": "1.4"
+}

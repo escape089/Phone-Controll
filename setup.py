@@ -20,9 +20,9 @@ build_exe_options = {
 }
 
 setup(
-    name="ADB_GUI",
-    version="1.0",
-    description="ADB APP",
+    name="Phone Controll",
+    version="1.3",
+    description="Phone Controll",
     options={"build_exe": build_exe_options},
     executables=[
         Executable("ADB.py", target_name="Phone Controll.exe", icon="img/adb_icon2.ico", manifest="app.manifest"),  # Erste .exe

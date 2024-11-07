@@ -233,7 +233,7 @@
         "archiveName": "Archivname:",
         "Name": "Name:",
         "Pfad": "Pfad:",
-        "Create": "Create",
+        "Create": "Erstellen",
         "Rename": "Umbennenen",
         "typ": "Typ:",
         "Size": "Größe:",
@@ -245,6 +245,7 @@
         "chooseDestinationFolder": "Wählen Sie den Zielordner aus",
         "mobileFileExplorer": "Dateiexplorer für Handy",
         "delandSafe": "wurde gelöscht und gespeichert.",
+        "copy1": "Kopiere",
         "copy": "Kopieren",
         "paste": "Einfügen",
         "delete": "Löschen",
@@ -288,7 +289,20 @@
         "zeit": "Verbleibende Zeit:",
         "download_finish": "Download abgeschlossen",
         "start_install": "Das Update wurde heruntergeladen. Die Installation beginnt jetzt.",
-        "download_error": "Fehler beim Herunterladen des Updates:"
+        "download_error": "Fehler beim Herunterladen des Updates:",
+        "to": "zu",
+
+        "root": "Root",
+        "Data": "Data",
+        "system": "System",
+        "Cache": "Cache",
+        "internelstorage": "Interner Speicher",
+        "Download_folder": "Download Ordner",
+        "select": "Wählen sie aus",
+        "folderorfile": "Möchten Sie eine Datei oder einen Ordner auswählen?",
+        "selfolder": "Wählen sie einen Ordner aus",
+        "selfile": "Wählen sie eine Datei aus"
+
 
     },
     "en": {
@@ -851,7 +865,25 @@
         "Archive": "Archives",
         "Documente": "Documents",
         "Custom": "Personnalisé",
-        "Backup": "Sauvegarde"
+        "Backup": "Sauvegarde",
+
+        "auto": "Automatique",
+        "manuel": "Manuel",
+        "nie": "Jamais",
+        "no_exe_found": "Aucun fichier .exe trouvé dans la dernière version.",
+        "Update-Check": "Vérification des mises à jour",
+        "up_todated": "La version actuelle est à jour.",
+        "error3": "Erreur lors de la vérification des mises à jour :",
+        "update_verfügbar": "Mise à jour disponible",
+        "Version": "Version",
+        "quest": "est disponible. Voulez-vous télécharger et installer la mise à jour ?",
+        "Unbekannt": "Inconnu",
+        "d_speed": "Progression du téléchargement :",
+        "speed": "Vitesse :",
+        "zeit": "Temps restant :",
+        "download_finish": "Téléchargement terminé",
+        "start_install": "La mise à jour a été téléchargée. L'installation va commencer maintenant.",
+        "download_error": "Erreur lors du téléchargement de la mise à jour :"
 
     },
 
@@ -1124,7 +1156,25 @@
         "Archive": "Archivos",
         "Documente": "Documentos",
         "Custom": "Personalizado",
-        "Backup": "Copia de seguridad"
+        "Backup": "Copia de seguridad",
+
+        "auto": "Automático",
+        "manuel": "Manual",
+        "nie": "Nunca",
+        "no_exe_found": "No se encontró ningún archivo .exe en la última versión.",
+        "Update-Check": "Comprobación de actualizaciones",
+        "up_todated": "La versión actual está actualizada.",
+        "error3": "Error al verificar actualizaciones:",
+        "update_verfügbar": "Actualización disponible",
+        "Version": "Versión",
+        "quest": "está disponible. ¿Quieres descargar e instalar la actualización?",
+        "Unbekannt": "Desconocido",
+        "d_speed": "Progreso de descarga:",
+        "speed": "Velocidad:",
+        "zeit": "Tiempo restante:",
+        "download_finish": "Descarga completa",
+        "start_install": "La actualización ha sido descargada. La instalación comenzará ahora.",
+        "download_error": "Error al descargar la actualización:"
 
     },
 
@@ -1397,7 +1447,25 @@
         "Archive": "Archivi",
         "Documente": "Documenti",
         "Custom": "Personalizzato",
-        "Backup": "Backup"
+        "Backup": "Backup",
+
+        "auto": "Automatico",
+        "manuel": "Manuale",
+        "nie": "Mai",
+        "no_exe_found": "Nessun file .exe trovato nell'ultima versione.",
+        "Update-Check": "Controllo aggiornamenti",
+        "up_todated": "La versione attuale è aggiornata.",
+        "error3": "Errore durante il controllo degli aggiornamenti:",
+        "update_verfügbar": "Aggiornamento disponibile",
+        "Version": "Versione",
+        "quest": "è disponibile. Vuoi scaricare e installare l'aggiornamento?",
+        "Unbekannt": "Sconosciuto",
+        "d_speed": "Progresso download:",
+        "speed": "Velocità:",
+        "zeit": "Tempo rimanente:",
+        "download_finish": "Download completato",
+        "start_install": "L'aggiornamento è stato scaricato. L'installazione inizierà ora.",
+        "download_error": "Errore durante il download dell'aggiornamento:"
 
     },
 
@@ -1670,7 +1738,25 @@
         "Archive": "Arquivos",
         "Documente": "Documentos",
         "Custom": "Personalizado",
-        "Backup": "Backup"
+        "Backup": "Backup",
+
+        "auto": "Automático",
+        "manuel": "Manual",
+        "nie": "Nunca",
+        "no_exe_found": "Nenhum arquivo .exe encontrado na última versão.",
+        "Update-Check": "Verificação de Atualizações",
+        "up_todated": "A versão atual está atualizada.",
+        "error3": "Erro ao verificar atualizações:",
+        "update_verfügbar": "Atualização disponível",
+        "Version": "Versão",
+        "quest": "está disponível. Deseja baixar e instalar a atualização?",
+        "Unbekannt": "Desconhecido",
+        "d_speed": "Progresso do download:",
+        "speed": "Velocidade:",
+        "zeit": "Tempo restante:",
+        "download_finish": "Download completo",
+        "start_install": "A atualização foi baixada. A instalação começará agora.",
+        "download_error": "Erro ao baixar a atualização:"
 
     },
 
@@ -1943,7 +2029,25 @@
         "Archive": "Archieven",
         "Documente": "Documenten",
         "Custom": "Aangepast",
-        "Backup": "Back-up"
+        "Backup": "Back-up",
+
+        "auto": "Automatisch",
+        "manuel": "Handmatig",
+        "nie": "Nooit",
+        "no_exe_found": "Geen .exe-bestand gevonden in de nieuwste release.",
+        "Update-Check": "Update controle",
+        "up_todated": "De huidige versie is up-to-date.",
+        "error3": "Fout bij het controleren op updates:",
+        "update_verfügbar": "Update beschikbaar",
+        "Version": "Versie",
+        "quest": "is beschikbaar. Wilt u de update downloaden en installeren?",
+        "Unbekannt": "Onbekend",
+        "d_speed": "Download voortgang:",
+        "speed": "Snelheid:",
+        "zeit": "Overgebleven tijd:",
+        "download_finish": "Download voltooid",
+        "start_install": "De update is gedownload. De installatie begint nu.",
+        "download_error": "Fout bij het downloaden van de update:"
 
     },
     "ru": {
@@ -2215,7 +2319,25 @@
         "Archive": "Архивы",
         "Documente": "Документы",
         "Custom": "Настраиваемый",
-        "Backup": "Резервная копия"
+        "Backup": "Резервная копия",
+
+        "auto": "Автоматически",
+        "manuel": "Вручную",
+        "nie": "Никогда",
+        "no_exe_found": "Файл .exe не найден в последнем релизе.",
+        "Update-Check": "Проверка обновлений",
+        "up_todated": "Текущая версия актуальна.",
+        "error3": "Ошибка при проверке обновлений:",
+        "update_verfügbar": "Доступно обновление",
+        "Version": "Версия",
+        "quest": "доступна. Вы хотите скачать и установить обновление?",
+        "Unbekannt": "Неизвестно",
+        "d_speed": "Прогресс загрузки:",
+        "speed": "Скорость:",
+        "zeit": "Оставшееся время:",
+        "download_finish": "Загрузка завершена",
+        "start_install": "Обновление загружено. Установка начнется сейчас.",
+        "download_error": "Ошибка при загрузке обновления:"
 
 
     },
@@ -2488,7 +2610,25 @@
     "Archive": "档案",
     "Documente": "文档",
     "Custom": "自定义",
-    "Backup": "备份"
+    "Backup": "备份",
+
+    "auto": "自动",
+    "manuel": "手动",
+    "nie": "从不",
+    "no_exe_found": "在最新版本中未找到 .exe 文件。",
+    "Update-Check": "检查更新",
+    "up_todated": "当前版本是最新的。",
+    "error3": "检查更新时出错：",
+    "update_verfügbar": "有可用更新",
+    "Version": "版本",
+    "quest": "可用。您要下载并安装更新吗？",
+    "Unbekannt": "未知",
+    "d_speed": "下载进度：",
+    "speed": "速度：",
+    "zeit": "剩余时间：",
+    "download_finish": "下载完成",
+    "start_install": "更新已下载。现在将开始安装。",
+    "download_error": "下载更新时出错："
 
 
     },
@@ -2761,7 +2901,25 @@
         "Archive": "アーカイブ",
         "Documente": "文書",
         "Custom": "カスタム",
-        "Backup": "バックアップ"
+        "Backup": "バックアップ",
+
+        "auto": "自動",
+        "manuel": "手動",
+        "nie": "決して",
+        "no_exe_found": ".exeファイルは最新のリリースに見つかりませんでした。",
+        "Update-Check": "更新の確認",
+        "up_todated": "現在のバージョンは最新です。",
+        "error3": "更新の確認中にエラーが発生しました：",
+        "update_verfügbar": "更新が利用可能です",
+        "Version": "バージョン",
+        "quest": "が利用可能です。更新をダウンロードしてインストールしますか？",
+        "Unbekannt": "不明",
+        "d_speed": "ダウンロード進捗：",
+        "speed": "速度：",
+        "zeit": "残り時間：",
+        "download_finish": "ダウンロード完了",
+        "start_install": "更新がダウンロードされました。インストールが始まります。",
+        "download_error": "更新のダウンロード中にエラーが発生しました："
 
     
     },
@@ -3034,7 +3192,25 @@
         "Archive": "Arşivler",
         "Documente": "Belgeler",
         "Custom": "Özel",
-        "Backup": "Yedek"
+        "Backup": "Yedek",
+
+        "auto": "Otomatik",
+        "manuel": "Manuel",
+        "nie": "Asla",
+        "no_exe_found": "Son sürümde .exe dosyası bulunamadı.",
+        "Update-Check": "Güncelleme Kontrolü",
+        "up_todated": "Mevcut sürüm güncel.",
+        "error3": "Güncellemeleri kontrol ederken hata:",
+        "update_verfügbar": "Güncelleme mevcut",
+        "Version": "Sürüm",
+        "quest": "mevcuttur. Güncellemeyi indirmek ve yüklemek ister misiniz?",
+        "Unbekannt": "Bilinmiyor",
+        "d_speed": "İndirme ilerlemesi:",
+        "speed": "Hız:",
+        "zeit": "Kalan süre:",
+        "download_finish": "İndirme tamamlandı",
+        "start_install": "Güncelleme indirildi. Şimdi kurulum başlayacak.",
+        "download_error": "Güncelleme indirilirken hata:"
 
 
     },
@@ -3307,7 +3483,25 @@
         "Archive": "아카이브",
         "Documente": "문서",
         "Custom": "사용자 정의",
-        "Backup": "백업"
+        "Backup": "백업",
+
+        "auto": "자동",
+        "manuel": "수동",
+        "nie": "절대",
+        "no_exe_found": "최신 릴리스에서 .exe 파일을 찾을 수 없습니다.",
+        "Update-Check": "업데이트 확인",
+        "up_todated": "현재 버전이 최신입니다.",
+        "error3": "업데이트 확인 중 오류:",
+        "update_verfügbar": "업데이트 가능",
+        "Version": "버전",
+        "quest": "이용 가능합니다. 업데이트를 다운로드하고 설치하시겠습니까?",
+        "Unbekannt": "알 수 없음",
+        "d_speed": "다운로드 진행 상황:",
+        "speed": "속도:",
+        "zeit": "남은 시간:",
+        "download_finish": "다운로드 완료",
+        "start_install": "업데이트가 다운로드되었습니다. 이제 설치가 시작됩니다.",
+        "download_error": "업데이트 다운로드 중 오류:"
 
 
     },
@@ -3580,7 +3774,25 @@
         "Archive": "أرشيف",
         "Documente": "وثائق",
         "Custom": "مخصص",
-        "Backup": "نسخة احتياطية"
+        "Backup": "نسخة احتياطية",
+
+        "auto": "تلقائي",
+        "manuel": "يدوي",
+        "nie": "أبداً",
+        "no_exe_found": "لم يتم العثور على ملف .exe في الإصدار الأخير.",
+        "Update-Check": "التحقق من التحديثات",
+        "up_todated": "النسخة الحالية محدثة.",
+        "error3": "خطأ في التحقق من التحديثات:",
+        "update_verfügbar": "تحديث متاح",
+        "Version": "الإصدار",
+        "quest": "متاح. هل تريد تنزيل وتثبيت التحديث؟",
+        "Unbekannt": "غير معروف",
+        "d_speed": "تقدم التنزيل:",
+        "speed": "السرعة:",
+        "zeit": "الوقت المتبقي:",
+        "download_finish": "اكتمل التنزيل",
+        "start_install": "تم تنزيل التحديث. ستبدأ التثبيت الآن.",
+        "download_error": "خطأ في تنزيل التحديث:"
     
 
 
@@ -3854,7 +4066,25 @@
         "Archive": "आर्काइव",
         "Documente": "दस्तावेज़",
         "Custom": "कस्टम",
-        "Backup": "बैकअप"
+        "Backup": "बैकअप",
+
+        "auto": "स्वचालित",
+        "manuel": "हाथ से",
+        "nie": "कभी नहीं",
+        "no_exe_found": "नवीनतम रिलीज़ में कोई .exe फ़ाइल नहीं मिली।",
+        "Update-Check": "अद्यतन जांचें",
+        "up_todated": "वर्तमान संस्करण अद्यतित है।",
+        "error3": "अद्यतन की जांच करते समय त्रुटि:",
+        "update_verfügbar": "अद्यतन उपलब्ध है",
+        "Version": "संस्करण",
+        "quest": "उपलब्ध है। क्या आप अद्यतन डाउनलोड और स्थापित करना चाहते हैं?",
+        "Unbekannt": "अज्ञात",
+        "d_speed": "डाउनलोड प्रगति:",
+        "speed": "गति:",
+        "zeit": "शेष समय:",
+        "download_finish": "डाउनलोड पूरा",
+        "start_install": "अद्यतन डाउनलोड किया गया है। अब स्थापना शुरू होगी।",
+        "download_error": "अद्यतन डाउनलोड करते समय त्रुटि:"
 
 
 

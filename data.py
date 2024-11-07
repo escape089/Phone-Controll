@@ -2,9 +2,11 @@ import json
 import subprocess
 import sys
 import tkinter as tk
-from tkinter import Frame, Image, IntVar, messagebox, filedialog, ttk, Menu, Toplevel
+from tkinter import BooleanVar, Frame, Image, IntVar, messagebox, filedialog, ttk, Menu, Toplevel
 from tkinter import filedialog, messagebox, scrolledtext, Frame, Checkbutton, IntVar, Entry, ttk
 import os
+import customtkinter as ctk
+from CTkMessagebox import CTkMessagebox 
 import threading
 from PIL import Image, ImageTk
 
@@ -199,12 +201,13 @@ def toggle_entry(zip_var, zip_entry):
         zip_entry.pack_forget()  # Eingabefeld ausblenden
 
 def show_selection_window(log_widget, dest_folder):
-    selection_window = tk.Toplevel(root)
+    selection_window = ctk.CTkToplevel(root)  # Verwende ctk.CTkToplevel anstelle von tk.Toplevel
     selection_window.title(f"{texts['settingsForSafe']}")
     selection_window.geometry("400x400")
+    selection_window.attributes('-topmost', 1)
     
     selection_window.resizable(False, False)
-    checkbox_frame = Frame(selection_window)
+    checkbox_frame = ctk.CTkFrame(selection_window)  # Verwende ctk.CTkFrame anstelle von Frame
     checkbox_frame.pack(pady=10)
 
     selected_types = []
@@ -219,33 +222,28 @@ def show_selection_window(log_widget, dest_folder):
 
     for type_name, extensions in file_types.items():
         var = IntVar()
-        cb = Checkbutton(checkbox_frame, text=type_name, variable=var)
+        cb = ctk.CTkCheckBox(checkbox_frame, text=type_name, variable=var)  # Verwende ctk.CTkCheckBox anstelle von Checkbutton
         cb.pack(anchor='w')
         selected_types.append((var, extensions))
 
     # Custom Extension Eingabe
-    extension_label = tk.Label(checkbox_frame, text=texts['enterCustomExtensions'])
+    extension_label = ctk.CTkLabel(checkbox_frame, text=texts['enterCustomExtensions'])  # Verwende ctk.CTkLabel
     extension_label.pack(anchor='w')
-    custom_extension_entry = Entry(checkbox_frame)
+    custom_extension_entry = ctk.CTkEntry(checkbox_frame)  # Verwende ctk.CTkEntry
     custom_extension_entry.pack(anchor='w')
 
-
-
-# Eingabefeld für den ZIP-Dateinamen
-
-
-    delete_files_var = tk.BooleanVar()
-    delete_files_checkbox = Checkbutton(checkbox_frame, text=texts['deleteAfterZip'], variable=delete_files_var)
+    # Eingabefeld für die Option "Delete Files"
+    delete_files_var = BooleanVar()
+    delete_files_checkbox = ctk.CTkCheckBox(checkbox_frame, text=texts['deleteAfterZip'], variable=delete_files_var)  # Verwende ctk.CTkCheckBox
     delete_files_checkbox.pack()
 
     # ZIP-Datei Erstellung Checkbox
-
     zip_var = IntVar()
-    zip_checkbox = Checkbutton(checkbox_frame, text=texts['createZip'], variable=zip_var, command=lambda: toggle_entry(zip_var, zip_entry))
+    zip_checkbox = ctk.CTkCheckBox(checkbox_frame, text=texts['createZip'], variable=zip_var, command=lambda: toggle_entry(zip_var, zip_entry))  # Verwende ctk.CTkCheckBox
     zip_checkbox.pack(anchor='w')
 
     # Eingabefeld für den ZIP-Dateinamen
-    zip_entry = Entry(checkbox_frame)
+    zip_entry = ctk.CTkEntry(checkbox_frame)  # Verwende ctk.CTkEntry
     zip_entry.pack_forget()
 
 
@@ -283,11 +281,13 @@ def show_selection_window(log_widget, dest_folder):
     process_button.pack(pady=10)
 
 def start_backup(log_widget, progress_bar):
+    top.attributes('-topmost', 0)
     dest_folder = filedialog.askdirectory(title=texts['chooseSafeDestinationFolder'])
     if not dest_folder:
         return
 
     show_selection_window(log_widget, dest_folder)
+    top.attributes('-topmost', 1)
 
 
 def save_log_to_file(log_widget):
@@ -389,8 +389,10 @@ def clear_log_temporarily(log_widget):
 
 
 def open_fast_frame():
-    top = Toplevel()  # Erstelle ein neues Toplevel-Fenster
+    global top
+    top = ctk.CTkToplevel()  # Erstelle ein neues Toplevel-Fenster
     top.title(texts['schnellesSichern'])
+    top.attributes('-topmost', 1)
 
     try:
         img = Image.open(r"img\explorer.ico")
@@ -405,7 +407,7 @@ def open_fast_frame():
     top.config(background="#323232")
 
     # Frame für das Log-Widget
-    log_frame = Frame(top, bg="#323232")
+    log_frame = ctk.CTkFrame(top, fg_color="#323232")
     log_frame.place(relx=0.02, rely=0.05, relwidth=0.96, relheight=0.75)
 
     log_widget = scrolledtext.ScrolledText(log_frame)
@@ -417,15 +419,15 @@ def open_fast_frame():
     log_widget.place(relx=0, rely=0, relwidth=1, relheight=1)
 
     # Fortschrittsbalken unter dem Log-Widget
-    progress_bar = ttk.Progressbar(top, orient='horizontal', length=400, mode='determinate')
-    progress_bar.place(relx=0.02, rely=0.82, relwidth=0.96, relheight=0.05)
+    progress_bar = ctk.CTkProgressBar(top)  # Verwende nur 'width'
+    #progress_bar.place(relx=0.02, rely=0.82, relwidth=0.96, relheight=0.05)
 
     # Start-Button, platziert rechts unten
-    start_button = tk.Button(top, text=texts['startBackup'], command=lambda: start_backup(log_widget, progress_bar))
+    start_button = ctk.CTkButton(top, text=texts['startBackup'], command=lambda: start_backup(log_widget, progress_bar))
     start_button.place(relx=0.72, rely=0.9, relheight=0.08, relwidth=0.25)
 
     # Safe Log-Button, daneben
-    save_button = tk.Button(top, text=texts['safeLOG'], command=lambda: save_log_to_file(log_widget))
+    save_button = ctk.CTkButton(top, text=texts['safeLOG'], command=lambda: save_log_to_file(log_widget))
     save_button.place(relx=0.47, rely=0.9, relheight=0.08, relwidth=0.2)
 
 ###########################################################################################################################################
@@ -469,6 +471,7 @@ def list_files(directory):
     """Zeige die Dateien eines Verzeichnisses auf dem Handy an."""
     directory = directory.replace(" ", "\\ ")  # Ersetze Leerzeichen für den Shell-Befehl
     command = f'{ADB_PATH} shell ls -pa "{directory}"'
+    
 
     output = run_adb_command(command)  # Führe den Befehl aus und erhalte die Ausgabe
 
@@ -489,6 +492,7 @@ def on_right_click(event, selected_files_to_copy):
 def sort_files(files, criterion):
     """Sortiere die Dateien basierend auf dem gewählten Kriterium."""
     if criterion == "Name":
+        
         return sorted(files, key=lambda x: x[0].lower())
     elif criterion == "Datum":
         return sorted(files, key=lambda x: x[1])  # Hier müsste das Datum bereitgestellt werden
@@ -496,56 +500,51 @@ def sort_files(files, criterion):
         return sorted(files, key=lambda x: x[2])  # Hier müsste die Größe bereitgestellt werden
     return files
 
-
+# Funktion zum Aktualisieren der Dateiliste
 def update_file_list(directory, sort_criterion="Name"):
-    """Aktualisiere die Dateiliste mit den Dateien des ausgewählten Verzeichnisses."""
+    """Aktualisiert die Dateiliste im Treeview mit Dateien des neuen Verzeichnisses."""
     global current_directory
     
     if not directory.endswith('/'):
-        directory += '/'
+        directory += '/'  # Stellt sicher, dass das Verzeichnis korrekt endet
     
-    current_directory = directory
-    list_files(directory)
+    current_directory = directory  # Aktualisiert das globale Verzeichnis
+    files = list_files(directory)  # Holt die Liste der Dateien
     
-    # Hole die Liste der Dateien und ihrer Attribute (hier als Platzhalter)
-    files = list_files(directory)
-    
-    # Leere die Treeview und füge die neuen Dateien hinzu
+    # Löscht alle Einträge im Treeview und fügt den neuen Inhalt hinzu
     directory_tree.delete(*directory_tree.get_children())
     
-    # Füge ".." hinzu, um ins vorherige Verzeichnis zu gelangen
+    # ".." für das übergeordnete Verzeichnis
     directory_tree.insert("", "end", text="..", image=folder_icon, values=(directory,), tags=("folder",))
     
-    # Sortiere die Dateien nach dem gewählten Kriterium
+    # Sortiert die Dateien und fügt sie dem Treeview hinzu
     sorted_files = sort_files(files, sort_criterion)
-
-    # Füge die sortierten Dateien hinzu
     for file in sorted_files:
         full_path = os.path.join(current_directory, file)
-        
         if file.endswith('/'):
             directory_tree.insert("", "end", text=file, image=folder_icon, values=(full_path,), tags=("folder",))
         else:
             directory_tree.insert("", "end", text=file, image=file_icon, values=(full_path,), tags=("file",))
     
-    update_path_display()  # Aktualisiere die Anzeige des Pfads
+    update_path_display()  # Aktualisiert die Anzeige des aktuellen Pfads
     
-
 def on_treeview_double_click(event):
     """Verarbeite einen Doppelklick in der Treeview."""
-    selected_item = directory_tree.selection()[0]
-    selected_item_text = directory_tree.item(selected_item, "text")
-    
-    # Wenn '..' ausgewählt wurde, gehe zurück
-    if selected_item_text == '..':
-        on_back_button_click()
-    else:
-        selected_item_values = directory_tree.item(selected_item, "values")
-        if selected_item_values:
-            new_directory = selected_item_values[0]
-            if not new_directory.endswith('/'):  # Verzeichnis sicherstellen
-                new_directory += '/'
-            update_file_list(new_directory)
+    selected_item = directory_tree.selection()  # Holt das ausgewählte Element
+    if selected_item:  # Sicherstellen, dass ein Element ausgewählt wurde
+        selected_item = selected_item[0]
+        selected_item_text = directory_tree.item(selected_item, "text")
+
+        # Wenn '..' ausgewählt wurde, gehe zurück
+        if selected_item_text == '..':
+            on_back_button_click()
+        else:
+            selected_item_values = directory_tree.item(selected_item, "values")
+            if selected_item_values:
+                new_directory = selected_item_values[0]
+                if not new_directory.endswith('/'):  # Verzeichnis sicherstellen
+                    new_directory += '/'
+                update_file_list(new_directory)
 
 
 def on_back_button_click():
@@ -592,10 +591,17 @@ def start_copy(local_path):
         destination_dir = os.path.dirname(destination_path)
         if not os.path.exists(destination_dir):
             os.makedirs(destination_dir)
+        source_path1 = source_path.split("/")  # Mit "/" teilen, falls der Pfad Unix-Stil hat
+        
+        copy_path = f"{texts['copy1']} {file} {texts['to']} {destination_path}"
+       
+        
 
         # Führe adb pull aus, um die Dateien zu kopieren
         command = [ADB_PATH, 'root', 'pull', source_path, destination_path]      
         command = [ADB_PATH, 'pull', source_path, destination_path]
+        copy_button.configure(image=copy2_icon)
+        path_label.configure(placeholder_text=copy_path)
         output = run_adb_command(command)
 
         # Füge hier Debugging-Ausgaben hinzu
@@ -610,7 +616,9 @@ def start_copy(local_path):
         progress_var.set(progress)  # Setze den Fortschritt in der Fortschrittsanzeige
         root.update_idletasks()  # Aktualisiere die GUI
 
-    messagebox.showinfo(texts['success'], texts['fileCopiedToDevice'])
+    
+    copy_button.configure(image=copy_icon)
+    path_label.configure(placeholder_text=current_directory)
     progress_var.set(0)  # Setze den Fortschritt nach Abschluss zurück
 
 
@@ -633,10 +641,12 @@ def Delete_files():
         
         source_path = f'"{source_path}"'
         # Stelle sicher, dass das Zielverzeichnis existiert
-
+        copy_path = f"{texts['delete']} {file}"
+        
 
         # Führe adb pull aus, um die Dateien zu kopieren
         command = [ADB_PATH, 'shell', 'rm', '-rf', source_path]
+        path_label.configure(placeholder_text=copy_path)
         output = run_adb_command(command)
         
         # Füge hier Debugging-Ausgaben hinzu
@@ -646,7 +656,8 @@ def Delete_files():
             
         else:
             pass
-
+    path_label.configure(placeholder_text=current_directory)
+    update_file_list(current_directory)
 
 def edit_files():
     global text_editor, editor_window, name_label
@@ -680,18 +691,13 @@ def edit_files():
         if output:
             text_editor.insert(tk.END, f"{output}\n\n", "content")  # Ausgabe mit Formatierung
         else:
-            text_editor.insert(tk.END, "Fehler: Keine Daten verfügbar oder Fehler beim Ausführen des Befehls.\n\n", "error")
+            pass
 
         # Label aktualisieren
-        name_label.config(text=source_path2)
+        name_label.configure(text=source_path2)
 
     text_editor.config(state=tk.DISABLED)  # Sperrt den Text-Editor am Ende
 
-    # Debugging-Ausgabe in der Konsole für jede Datei
-    print(f"Bearbeitung von {total_files} Dateien abgeschlossen.")
-
-    # Debugging-Ausgabe in der Konsole für jede Datei
-    print(f"Bearbeitung von {total_files} Dateien abgeschlossen.")
 
 def format_size(bytes_size):
     """Konvertiert die Größe in Bytes in ein lesbares Format."""
@@ -703,8 +709,13 @@ def format_size(bytes_size):
         return f"{bytes_size / (1024 ** 2):.2f} MB"
     else:
         return f"{bytes_size / (1024 ** 3):.2f} GB"
-
+    
 def prop_files():
+    thread = threading.Thread(target=prop_files2)
+    thread.daemon = True  # Macht den Thread zu einem Daemon-Thread, der beim Beenden des Programms automatisch beendet wird
+    thread.start()
+
+def prop_files2():
     """Hauptfunktion zur Verarbeitung der Dateien."""
     global name_value, path_value, size_value
     total_files = len(selected_files_to_copy)
@@ -714,10 +725,6 @@ def prop_files():
         # Splitte den Dateinamen und die Erweiterung
         _, ext = os.path.splitext(file)
         file_extensions.append(ext)
-
-    if total_files == 0:
-        messagebox.showwarning(texts['warning'], texts['noFilesSelectedForOpen'])
-        return
 
     for index, file in enumerate(selected_files_to_copy):
         source_path = os.path.join(current_directory, file)
@@ -733,43 +740,76 @@ def prop_files():
             formatted_size = format_size(bytes_size)  # Größe umrechnen
 
             # Aktualisiere die Labels mit Dateiinformationen
-            size_value.config(text=formatted_size)  # Anzeige in GUI aktualisieren
-            name_value.config(text=file)
-            type_value.config(text=file_extensions)
-            path_value.config(text=source_path)
+            size_value.configure(text=formatted_size)  # Anzeige in GUI aktualisieren
+            name_value.configure(text=file)
+            type_value.configure(text=file_extensions)
+            path_value.configure(text=source_path)
+            
 
             create_tooltip(name_value, name_value.cget("text"))
 
-            create_tooltip(type_value, type_value.cget("text"))
-
             create_tooltip(path_value, path_value.cget("text"))
 
+             # Benutze den String direkt
+
         except subprocess.CalledProcessError as e:
-            size_value.config(text="None")
+            size_value.configure(text="None")
               # Debugging-Ausgabe
         except ValueError:
-            size_value.config(text="None")
+            size_value.configure(text="None")
 
         # Debugging-Ausgabe in der Konsole
+    size_value.after(100, prop_files)
+
+def fast_cange(selection):
+    if selection == texts['root']:
+        
+        current_directory = "/"
+        update_file_list(current_directory)
+        
+    elif selection == texts['Data']:
+        
+        current_directory = "/data"
+        update_file_list(current_directory)
+        
+    elif selection == texts['Cache']:
+        
+        current_directory = "/Cache"
+        update_file_list(current_directory)
+
+    elif selection == texts['system']:
+        
+        current_directory = "/system"
+        update_file_list(current_directory)
+
+    elif selection == texts['internelstorage']:
+        
+        current_directory = "/sdcard"
+        update_file_list(current_directory)
+
+    elif selection == texts['Download_folder']:
+        
+        current_directory = "/sdcard/download"
+        update_file_list(current_directory)
+       
+    else:
+        pass
         
 
 def copy_path():
     # Holen Sie sich den Text aus dem Label
-    text = path_value.config('text')[-1]  # Holen Sie sich den Text des Labels
+    text = path_value.cget("text")  # Holen Sie sich den Text des Labels
     if text:
         root.clipboard_clear()  # Löschen Sie die aktuelle Zwischenablage
         root.clipboard_append(text)  # Fügen Sie den neuen Text zur Zwischenablage hinzu
 
 def copy_name():
     # Holen Sie sich den Text aus dem Label
-    text = name_value.config('text')[-1]  # Holen Sie sich den Text des Labels
+    text = name_value.cget("text")  # Holen Sie sich den Text des Labels
     if text:
         root.clipboard_clear()  # Löschen Sie die aktuelle Zwischenablage
         root.clipboard_append(text)  # Fügen Sie den neuen Text zur Zwischenablage hinzu
 
-
-       
-        
 
 def save_text():
     """Speichert den Text aus dem Texteditor in einer Datei."""
@@ -814,24 +854,28 @@ def open_text_editor():
     """Öffnet ein neues Texteditor-Fenster."""
     global text_editor, editor_window, name_label
 
-    editor_window = tk.Toplevel(root)
+    editor_window = ctk.CTkToplevel(root)
     editor_window.title(texts['Title'])
     editor_window.geometry("800x750")
-    editor_window.configure(bg="#282C34")
+    editor_window.configure(fg_color="#282C34")
+
+    download_img = Image.open(r"img\download.png") 
+    download_icoo = ctk.CTkImage(light_image=download_img, dark_image=download_img)
+
 
     try:
         img = Image.open(r"img\explorer.ico")
-        img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
-        icon_photo = ImageTk.PhotoImage(img)
-        editor_window.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+        img = img.resize((50, 50))  # Größe anpassen
+        icon_photo = ImageTk.PhotoImage(img)  # Verwende PhotoImage für das Fenster-Icon
+        editor_window.iconphoto(False, icon_photo)  # Fenster-Icon setzen
     except Exception as e:
-        print(f"Fehler beim Laden des Icons: {e}")
+        pass
 
-    # Frame für den Texteditor mit schönem Design
-    frame = ttk.Frame(editor_window, padding="10 10 10 10", style="My.TFrame")
+    # Frame für Texteditor erstellen
+    frame = ctk.CTkFrame(editor_window, corner_radius=10)
     frame.place(relx=0.05, rely=0.05, relwidth=0.9, relheight=0.9)
 
-    # Text-Widget im Frame erstellen
+    # Texteditor erstellen
     text_editor = tk.Text(
         frame, wrap="word", undo=True, font=("Helvetica", 14),
         bg="#3C3F41", fg="#ABB2BF", insertbackground="white",
@@ -840,31 +884,26 @@ def open_text_editor():
     text_editor.place(relx=0, rely=0, relwidth=1, relheight=1)
 
     # Scrollbar hinzufügen
-    scrollbar = ttk.Scrollbar(frame, orient="vertical", command=text_editor.yview)
-    text_editor["yscrollcommand"] = scrollbar.set
+    scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=text_editor.yview)
+    text_editor.configure(yscrollcommand=scrollbar.set)
     scrollbar.place(relx=0.98, rely=0, relheight=1)
 
     # Label für den Namen
-    name_label = tk.Label(editor_window)
+    name_label = ctk.CTkLabel(editor_window, text="")
     name_label.place(relx=0.01, rely=0.01)
 
-    # Download-Button mit Bild
-    global download_ico
-    download_img = Image.open(r"img\download.png")  # Ersetze mit dem Pfad zu deinem Bild
-    download_ico = ImageTk.PhotoImage(download_img)
+    
 
-    download_text_button = tk.Button(
-        editor_window, image=download_ico, height=24, width=24, command=save_text
+    download_text_button = ctk.CTkButton(
+        editor_window, image=download_icoo, text="", height=30, width=30,
+        command=save_text
     )
     download_text_button.place(relx=0.9, rely=0.01)
 
-    # Stile für Toplevel und Text-Editor
-    style = ttk.Style(root)
-    style.configure("My.TFrame", background="#3C3F41", relief="solid")
-    style.configure("My.TText", font=("Helvetica", 14), padding=5)
+
 
 def create_top_level():
-    top = Toplevel(root)
+    top = ctk.CTkToplevel(root)
     top.title(texts['Info'])
     top.geometry("310x200")
 
@@ -874,59 +913,72 @@ def create_top_level():
         icon_photo = ImageTk.PhotoImage(img)
         top.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
     except Exception as e:
-        print(f"Fehler beim Laden des Icons: {e}")
+        pass
 
     global name_value, path_value, type_value, size_value
 
-    global download_ico
-    global copy_ico  
+    # Bilder laden und auf CTkButton anwenden
+    download_img = Image.open(r"img\download.png")  # Pfad zu deinem Bild
+    copy_img = Image.open(r"img\copy.png")  # Pfad zu deinem Bild
+    
 
-    download_img = Image.open(r"img\download.png")  # Ersetze mit dem Pfad zu deinem Bild
-    download_ico = ImageTk.PhotoImage(download_img)
-
-    copy_img = Image.open(r"img\copy.png")  # Ersetze mit dem Pfad zu deinem Bild
-    copy_ico = ImageTk.PhotoImage(copy_img)
+    download_icoo = ctk.CTkImage(light_image=download_img, dark_image=download_img)
+    copy_icoo = ctk.CTkImage(light_image=copy_img, dark_image=copy_img)
 
     # Name Label und Button
-    name_label = tk.Label(top, text=texts['Name'])
+    name_label = ctk.CTkLabel(top, text=texts['Name'])
     name_label.place(relx=0.05, rely=0.1, anchor="w")
     
-    name_value = tk.Label(top, text="")
+    name_value = ctk.CTkLabel(top, text="")
     name_value.place(relx=0.3, rely=0.1, anchor="w")
     
-    name_button = tk.Button(top, image=copy_ico, command=copy_name)
+    name_button = ctk.CTkButton(top, image=copy_icoo, text="", command=copy_name, width=30, height=30)
     name_button.place(relx=0.78, rely=0.1, anchor="w")
 
-    name_button = tk.Button(top, image=download_ico, command=on_save_button_click)
-    name_button.place(relx=0.89, rely=0.1, anchor="w")
+    download_button = ctk.CTkButton(top, image=download_icoo, text="", command=on_save_button_click, width=30, height=30)
+    download_button.place(relx=0.89, rely=0.1, anchor="w")
+
+    del_button = ctk.CTkButton(
+        top, image=del_icon, text="", height=30, width=30,
+        command=Start_Del_files
+    )
+    del_button.place(relx=0.85, rely=0.8)
+
+
+    ren_button = ctk.CTkButton(
+        top, image=ren_icon, text="", height=30, width=30,
+        command=rename_toplevel
+    )
+    ren_button.place(relx=0.7, rely=0.8)
 
     # Pfad Label und Button
-    path_label = tk.Label(top, text=texts['Pfad'])
+    path_label = ctk.CTkLabel(top, text=texts['Pfad'])
     path_label.place(relx=0.05, rely=0.3, anchor="w")
     
-    path_value = tk.Label(top, text="")
+    path_value = ctk.CTkLabel(top, text="")
     path_value.place(relx=0.3, rely=0.3, anchor="w")
     
-    path_button = tk.Button(top, image=copy_ico, command=copy_path)
+    path_button = ctk.CTkButton(top, image=copy_icoo, text="", command=copy_path, width=30, height=30,)
     path_button.place(relx=0.78, rely=0.3, anchor="w")
 
-    # Typ Label und Button
-    type_label = tk.Label(top, text=texts['typ'])
+    # Typ Label
+    type_label = ctk.CTkLabel(top, text=texts['typ'])
     type_label.place(relx=0.05, rely=0.5, anchor="w")
     
-    type_value = tk.Label(top, text="")
+    type_value = ctk.CTkLabel(top, text="")
     type_value.place(relx=0.3, rely=0.5, anchor="w")
     
-    # Größe Label und Button
-    size_label = tk.Label(top, text=texts['Size'])
+    # Größe Label
+    size_label = ctk.CTkLabel(top, text=texts['Size'])
     size_label.place(relx=0.05, rely=0.7, anchor="w")
     
-    size_value = tk.Label(top, text="")
+    size_value = ctk.CTkLabel(top, text="")
     size_value.place(relx=0.3, rely=0.7, anchor="w")
     
     
 
     prop_files()
+    
 
 
 
@@ -969,7 +1021,7 @@ def comp_files(local_path="/sdcard", archive_name="cool", archive_format="tar"):
         
         # Zeige den Output in der Konsole und in einer Messagebox an
     
-        messagebox.showinfo("ADB Output", f"\n{output}")
+        messagebox.showinfo("", f"\n{output}")
 
         # Überprüfe das Ergebnis
         if "error" in output.lower():
@@ -1006,7 +1058,7 @@ def open_options_window():
         icon_photo = ImageTk.PhotoImage(img)
         options_window.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
     except Exception as e:
-        print(f"Fehler beim Laden des Icons: {e}")
+        pass
     
     # Archivname
     tk.Label(options_window, text=texts['name2']).grid(row=0, column=0, padx=10, pady=5)
@@ -1070,18 +1122,16 @@ def on_save_button_click():
 
 def update_path_display():
     """Aktualisiere die Anzeige des aktuellen Pfads."""
-    path_label.config(text=f"{texts['Aktueller Pfad']} {current_directory}")
+    path_label.delete(0, "end")
+    path_label.configure(placeholder_text=current_directory)
     children = directory_tree.get_children()
     item_count = len(children)
 
     # Beispiel für den Zugriff auf die letzten Einträge
     if item_count > 0:  # Überprüfe, ob es Kinder gibt
-        directory_tree.see(children[-0]) # Scrolle zum letzten Eintrag
+        directory_tree.see(children[0]) # Scrolle zum letzten Eintrag
 
-def on_sort_change(event):
-    """Aktualisiere die Datei- und Ordnerliste, wenn sich die Sortieroption ändert."""
-    sort_criterion = sort_var.get()
-    update_file_list(current_directory, sort_criterion)
+
 
 def show_tooltip(event, text):
     """Zeige Tooltip mit dem vollständigen Namen an."""
@@ -1134,7 +1184,12 @@ def show_context_menu(event):
                     context_menu.delete(i)
                     break
 
-        if selected_item_text.endswith(".txt"):
+        if selected_item_text.endswith((
+            ".txt", ".log", ".conf", ".cfg", ".ini", ".xml", ".json", ".properties", 
+            ".csv", ".html", ".htm", ".md", ".rst", ".yaml", ".yml", 
+            ".sh", ".bashrc", ".java", ".cpp", ".h", ".py",
+            ".key", ".key", ".db"
+        )):
             context_menu.add_command(label=texts['edit'], command=edit_files)
 
         # Kontextmenü nur anzeigen, wenn es mindestens einen Eintrag enthält
@@ -1152,6 +1207,35 @@ def show_context_menu(event):
 
 
 
+def execute_adb_sync():
+    def thread_task():
+        # Ordner auswählen
+        source_directory = filedialog.askdirectory()
+        if not source_directory:
+            return
+
+        # adb sync ausführen
+        try:
+            # Ausführen des adb sync-Befehls
+            command = ["adb", "pull", "--sync", "/sdcard"]
+            process = subprocess.Popen(command, cwd=source_directory, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Live-Ausgabe lesen
+            for line in process.stdout:
+                print(line)  # Ausgabe in das Textfeld einfügen
+                
+            process.wait()  # Warten bis der Prozess beendet ist
+            
+            if process.returncode == 0:
+                pass
+            else:
+                error_output = process.stderr.read()  # Fehlerausgabe lesen
+                pass
+        except FileNotFoundError:
+            pass
+
+    # Starte den Thread
+    threading.Thread(target=thread_task).start()
 
 
 def push_files(selected_file):
@@ -1171,8 +1255,16 @@ def push_copy(selected_file):
 
     # Führe adb push aus, um die Datei zu kopieren
     command = [ADB_PATH, 'push', selected_file, current_directory]
-    output = run_adb_command(command)
 
+    selected_file = selected_file.split("/")  # Mit "/" teilen, falls der Pfad Unix-Stil hat
+    selected_file1 = selected_file[-1]
+
+    paste_button.configure(image=paste2_icon)
+    copy_path = f"{texts['copy1']} {selected_file1} {texts['to']} {current_directory}"
+    path_label.configure(placeholder_text=copy_path)
+    
+    output = run_adb_command(command)
+    
     # Debugging-Ausgabe
     
     if output:  # Wenn es eine Ausgabe gibt, zeige sie an
@@ -1180,8 +1272,7 @@ def push_copy(selected_file):
 
     else:
         pass
-
-    messagebox.showinfo(texts['success'], texts['fileCopiedToDevice'])
+    paste_button.configure(image=paste_icon)
     update_file_list(current_directory)
 
 
@@ -1196,7 +1287,7 @@ def open_toplevel():
     Standart_name = "New Folder"        
 
     toplevel = tk.Toplevel(root)
-    toplevel.title("Informationen eingeben")
+    toplevel.title("")
 
     try:
         img = Image.open(r"img\explorer.ico")
@@ -1204,7 +1295,7 @@ def open_toplevel():
         icon_photo = ImageTk.PhotoImage(img)
         toplevel.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
     except Exception as e:
-        print(f"Fehler beim Laden des Icons: {e}")
+        pass
     
     # Label und Entry für den Namen
     name_label = tk.Label(toplevel, text=texts['Name'])
@@ -1227,6 +1318,8 @@ def open_toplevel():
     create_button = tk.Button(toplevel, text=texts['Create'], command=create_directory)
     create_button.pack(pady=10)
 
+    
+
 def create_directory():
     """Kopiere die ausgewählte Datei vom PC auf das Android-Gerät."""
     # Zielpfad auf dem Gerät angeben (zum Beispiel '/sdcard/Download/')
@@ -1247,33 +1340,47 @@ def create_directory():
     else:
         pass
     update_file_list(current_directory)
+
+def on_entry_click(event):
+    """Löscht den Standardnamen, wenn das Entry-Feld angeklickt wird."""
+    current_text = rename_entry.get()
+    if current_text == "New Folder":  # Überprüfen, ob der Standardname noch da ist
+        rename_entry.delete(0, ctk.END)  # Lösche das Entry-Feld
+        
+
 def rename_toplevel():
-    global rename_entry
+    global rename_entry, rename_windows
 
-    """Öffnet ein Toplevel-Fenster mit zwei Entry-Feldern."""
+    """Öffnet ein Toplevel-Fenster mit einem Entry-Feld für den Namen."""
     for index, file in enumerate(selected_files_to_copy):
-        source_path = os.path.join(current_directory)
-        source_path = f'"{source_path}"'
+        source_path = os.path.join(current_directory, file)
+        source_path = f'"{source_path}"'  # Den vollständigen Pfad zusammenstellen
     
-    Standart_name = "New Folder"        
+    Standart_name = "New Folder"  # Standardname, der im Entry-Feld erscheinen kann
 
-    toplevel = tk.Toplevel(root)
-    toplevel.title("Informationen eingeben")
-    
+    rename_windows = ctk.CTkToplevel(root)  # Toplevel Fenster mit ctk
+    rename_windows.title("")
+    rename_windows.geometry("200x130")
+    rename_windows.attributes("-topmost", True)
+
     # Label und Entry für den Namen
-    name_label = tk.Label(toplevel, text=texts['Name'])
+    name_label = ctk.CTkLabel(rename_windows, text=texts['Name'])  # ctk Label
     name_label.pack(pady=5)
     
-    rename_entry = tk.Entry(toplevel, width=30)
+    rename_entry = ctk.CTkEntry(rename_windows, width=150)  # ctk Entry
+    rename_entry.insert(0, Standart_name)  # Setzt den Standardnamen als Platzhalter
     rename_entry.pack(pady=5)
 
-    rename_button = tk.Button(toplevel, text=texts['Rename'], command=rename_files)
+    rename_entry.bind("<FocusIn>", on_entry_click)
+
+    rename_button = ctk.CTkButton(rename_windows, text=texts['Rename'], command=rename_files)  # ctk Button
     rename_button.pack(pady=10)
     
 def rename_files():
     """Kopiere die ausgewählten Dateien oder Verzeichnisse in den Zielordner."""
     total_files = len(selected_files_to_copy)
     name = rename_entry.get()  # Neuen Namen aus dem Entry-Feld abrufen
+    rename_windows.attributes("-topmost", False)
 
     if total_files == 0:
         pass
@@ -1295,32 +1402,53 @@ def rename_files():
 
         # Füge hier Debugging-Ausgaben hinzu
 
+    rename_windows.destroy()
     update_file_list(current_directory)
+
+class CustomDialog(ctk.CTkToplevel):
+    def __init__(self, parent, title, message, callback):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("300x150")
+        
+        # Message anzeigen
+        label = ctk.CTkLabel(self, text=message)
+        label.pack(pady=20)
+        
+        # Schaltflächen hinzufügen
+        file_button = ctk.CTkButton(self, text=texts['selfile'], command=lambda: callback("file"))
+        file_button.pack(side="left", padx=20, pady=10)
+        
+        folder_button = ctk.CTkButton(self, text=texts['selfolder'], command=lambda: callback("folder"))
+        folder_button.pack(side="right", padx=20, pady=10)
+        
+        self.grab_set()  # Macht das Fenster modal (blockiert die Hauptanwendung)
+        
 
 def push_selected_file():
     """Wählt eine Datei oder einen Ordner vom PC aus und kopiert sie auf das Gerät."""
-    # Wählen Sie zwischen Datei oder Ordner
-    choice = messagebox.askquestion("Wählen Sie aus", "File = Yes\nFolder=NO", icon='question')
+    def on_button_click(selection):
+        """Wird aufgerufen, wenn der Benutzer die Auswahl trifft."""
+        if selection == "file":
+            selected_file = filedialog.askopenfilename(title=texts['selfile'])
+            if selected_file:
+                push_files(selected_file)
+            else:
+                return
+        elif selection == "folder":
+            selected_file= filedialog.askdirectory(title=texts['selfolder'])
+            if selected_file:
+                push_files(selected_file)
+            else:
+                return
+        dialog.destroy()  # Dialog schließen
     
-    if choice == 'yes':
-        # Datei auswählen
-        selected_file = filedialog.askopenfilename(title="Wählen Sie eine Datei aus")
-        
-        if selected_file:
-            push_files(selected_file)  # Datei kopieren
-        else:
-            return  # Abbrechen, wenn keine Datei ausgewählt wurde
-    else:
-        # Ordner auswählen
-        selected_file = filedialog.askdirectory(title="Wählen Sie einen Ordner aus")
-        
-        if selected_file:
-            push_files(selected_file)  # Ordner kopieren
-        else:
-            return  # Abbrechen, wenn kein Ordner ausgewählt wurde
+    # Erstelle den benutzerdefinierten Dialog
+    dialog = CustomDialog(root, texts['select'], texts['folderorfile'], on_button_click)
+
 
 def copy_selected_file():
-    """Kopiere die ausgewählte Datei."""
+   
     local_path = filedialog.askdirectory(title="")
     if not local_path:
         return  # Abbrechen, wenn kein Pfad ausgewählt wurde
@@ -1330,7 +1458,7 @@ def copy_selected_file():
 
 
 def compress_selected_file():
-    """Kopiere die ausgewählte Datei."""
+    
     local_path = "/sdcard"
     if not local_path:
         return  # Abbrechen, wenn kein Pfad ausgewählt wurde
@@ -1338,10 +1466,6 @@ def compress_selected_file():
     comp_files(local_path)
 
 def Del_selected_file():
-    """Kopiere die ausgewählte Datei."""
-    local_path = ()
-
-    
     Start_Del_files()
 
 def get_file_properties(file_path):
@@ -1370,74 +1494,194 @@ def get_file_properties(file_path):
     except Exception as e:
         pass
         return None
+    
+def search_treeview(event):
+    search_text = entry.get().lower()  # Den Text aus dem Entry holen und in Kleinbuchstaben umwandeln
+    
+    if not search_text:  # Wenn der Text im Entry leer ist, entferne die Markierungen
+        for item in directory_tree.get_children():
+            directory_tree.item(item, tags=())  # Entfernt alle Tags
+        return
 
+    for item in directory_tree.get_children():
+        # Überprüfen, ob der Text im aktuellen Eintrag vorkommt
+        item_values = directory_tree.item(item, "values")
+        if any(search_text in str(value).lower() for value in item_values):
+            directory_tree.item(item, tags=("found",))  # Markieren des gefundenen Eintrags
+        else:
+            directory_tree.item(item, tags=(""))
 
+    # Alle markierten Zeilen hervorheben
+    directory_tree.tag_configure("found", background="yellow")
+
+def update_directory():
+    new_directory = path_label.get()  # Holt den Text aus dem Entry
+    if new_directory:  # Prüfen, ob das Feld nicht leer ist
+        update_file_list(new_directory)
+        path_label.delete(0, "end")  # Löscht den Text im Entry vollständig
+        path_label.configure(placeholder_text=new_directory)  # Setzt den neuen Pfad als Placeholder
+
+def Check_button():
+    # Überprüfen, ob die Liste 'selected_files_to_copy' nicht leer ist und nicht ".." enthält
+    if selected_files_to_copy and ".." not in selected_files_to_copy:
+        # Wenn Bedingung erfüllt ist, platziere den Button
+        info_button.place(relx=0.4, rely=0.4, anchor="sw")
+    else:
+        # Andernfalls entferne den Button
+        info_button.place_forget()
+
+    # Wiederhole die Überprüfung alle 1000 Millisekunden (1 Sekunde)
+    info_button.after(1000, Check_button)
+    
 
 
 
 # Setze das Startverzeichnis auf /
-current_directory = ''
+current_directory = '/'
 
 # Variable für die ausgewählten Dateien
 selected_files_to_copy = []
 tooltip = None
 
 # Erstelle das Tkinter-Fenster
-root = tk.Tk()
+root = ctk.CTk()
 root.title("File Explorer")
-root.geometry("600x500")  # Fenstergröße
+root.geometry("800x500")  # Fenstergröße
 root.configure(bg="#2E2E2E")  # Hintergrundfarbe des Fensters
 
 try:
-    img = Image.open(r"img\explorer.ico")
-    img = img.resize((50, 50))  # Ändere die Größe nach Bedarf
-    icon_photo = ImageTk.PhotoImage(img)
-    root.iconphoto(False, icon_photo)  # Setze das Icon für das Fenster
+    img = Image.open(r"img\explorer.ico")  # Pfad zum Icon
+    root.iconphoto(False, ctk.CTkImage(img)) 
 except Exception as e:
-    print(f"Fehler beim Laden des Icons: {e}")
+    pass
 
-sort_var = tk.StringVar(value=sort_options[0])  # Standardwert
-sort_menu = ttk.OptionMenu(root, sort_var, sort_options[0], *sort_options, command=on_sort_change)
-sort_menu.pack()
+def on_option_change(choice):
+    fast_cange(choice)  # Auswahl an die Funktion übergeben
+# Versuche das Fenster-Icon zu setzen
 
-        # Übersetzungen und Texte laden
+
+
+# Sprachen und Texte laden
 language_code = load_language_setting()
 translations = load_translations()
 texts = get_texts(language_code)
 
-# Lade die Symbole für Ordner und Dateien
-folder_icon = PhotoImage(file=r"img\folder.png")  # Pfad zum Ordner-Symbol (PNG)
-file_icon = PhotoImage(file=r"img\document.png")      # Pfad zum Datei-Symbol (PNG)
 
-# Erstelle eine Treeview für die Anzeige der Dateien mit Symbolen
-directory_tree = ttk.Treeview(root, columns=("full_path",), show="tree", selectmode="extended")
-directory_tree.place(relx=0.5, rely=0.45, anchor="center", relwidth=0.9, relheight=0.7)
+folder_img = Image.open(r"img\folder.png")
+file_img = Image.open(r"img\document.png")
+paste_img = Image.open(r"img\upload.png")
+paste2_img = Image.open(r"img\upload2.png")
+copy_img = Image.open(r"img\download.png")
+copy2_img = Image.open(r"img\download2.png")
+info_img = Image.open(r"img\info.png")
+del_img = Image.open(r"img\müll.png")
+ren_img = Image.open(r"img\rename.png")
+
+# Skaliere die Bilder nach Bedarf (z. B. auf 30x30)
+folder_icon = folder_img.resize((30, 30))
+folder_icon = ImageTk.PhotoImage(folder_icon)
+
+file_icon = file_img.resize((30, 30))
+file_icon = ImageTk.PhotoImage(file_icon)
+
+paste_icon = ctk.CTkImage(light_image=paste_img, dark_image=paste_img)
+paste2_icon = ctk.CTkImage(light_image=paste2_img, dark_image=paste2_img)
+copy_icon = ctk.CTkImage(light_image=copy_img, dark_image=copy_img)
+copy2_icon = ctk.CTkImage(light_image=copy2_img, dark_image=copy2_img)
+del_icon = ctk.CTkImage(light_image=del_img, dark_image=del_img)
+ren_icon = ctk.CTkImage(light_image=ren_img, dark_image=ren_img)
+info_icon = ctk.CTkImage(light_image=info_img, dark_image=info_img)
+
+# Button-Frame für Aktionen
+buttons_frame = ctk.CTkFrame(root, height=80)
+buttons_frame.pack(side='top', fill=tk.X)
+
+
+# Buttons für Aktionen
+paste_button = ctk.CTkButton(buttons_frame, image=paste_icon, command=push_selected_file, bg_color="#666666", text="", height=10, width=10)
+paste_button.place(relx=0.03, rely=0.4, anchor="sw")
+
+copy_button = ctk.CTkButton(buttons_frame, image=copy_icon, command=copy_selected_file, bg_color="#666666", text="", height=10, width=10)
+copy_button.place(relx=0.08, rely=0.4, anchor="sw")
+
+del_button = ctk.CTkButton(buttons_frame, image=del_icon, command=Del_selected_file, bg_color="#666666", text="", height=10, width=10)
+del_button.place(relx=0.13, rely=0.4, anchor="sw")
+
+ren_button = ctk.CTkButton(buttons_frame, image=ren_icon, command=rename_toplevel, bg_color="#666666", text="", height=10, width=10)
+ren_button.place(relx=0.18, rely=0.4, anchor="sw")
+
+info_button = ctk.CTkButton(buttons_frame, image=info_icon, command=create_top_level, bg_color="#666666", text="", height=10, width=10)
+info_button.place_forget
+
+fast_save_button = ctk.CTkButton(buttons_frame, text=texts['schnellesSichern'], command=open_fast_frame, bg_color="#666666",  font=("Arial", 12))
+fast_save_button.place(relx=0.97, rely=0.5, anchor="ne")
+
+entry = ctk.CTkEntry(buttons_frame, width=200, placeholder_text="Search")
+entry.place(relx=0.97, rely=0.06, anchor="ne")
+
+options = [
+    texts['root'],
+    texts['Data'],
+    texts['system'],
+    texts['Cache'],
+    texts['internelstorage'],
+    texts['Download_folder'],
+
+
+]  # Die Optionen
+selected_option = ctk.StringVar(value=options[0])  # Standardauswahl
+
+option_menu = ctk.CTkOptionMenu(root, values=options, command=on_option_change)
+option_menu.place(relx=0.7, rely=0.01, anchor="ne")
+
+
+entry.bind("<KeyRelease>", search_treeview)
+
+# Verzeichnis-Frame
+dir_frame = ctk.CTkFrame(root, fg_color="#2E2E2E")
+dir_frame.pack(side='top', fill=tk.BOTH, expand=True)
+
+style = ttk.Style()
+style.theme_use("default")  # Setzt den Stil auf "default" für mehr Kontrolle
+
+# Treeview-Hintergrund und -Schriftfarbe einstellen
+style.configure("Treeview",
+                background="#2E2E2E",
+                foreground="white",
+                fieldbackground="#2E2E2E",  # Feldhintergrundfarbe
+                rowheight=23)
+
+# Header (optional) für Treeview anpassen
+style.configure("Treeview.Heading",
+                background="#2E2E2E",
+                foreground="white")
+
+# Treeview-Widget erstellen
+directory_tree = ttk.Treeview(dir_frame, style="Treeview", columns=("full_path",), show="tree", selectmode="extended")
+directory_tree.pack(fill="both", expand=True)
+
 
 # Binde Doppelklick-Ereignisse
-
 directory_tree.bind("<Double-1>", on_treeview_double_click)
 directory_tree.bind("<<TreeviewSelect>>", on_treeview_select)
 
 # Label für den aktuellen Pfad
-path_label = tk.Label(root, text=f"{texts['Aktueller Pfad']} {current_directory}", bg="#2E2E2E", fg="white", font=("Arial", 12))
-path_label.place(relx=0.05, rely=0.98, anchor="w")  # Position des Pfad-Labels
+current_directory = "/"  # Beispiel-Pfad
 
-# Fortschrittsanzeige erstellen
-progress_var = tk.DoubleVar()  # Fortschrittsvariable
 
-# Progress-Bar hinzufügen
+
+path_label = ctk.CTkEntry(root,width=200, placeholder_text=current_directory)
+path_label.pack(side='bottom', fill="both",anchor="sw")
+
+path_label.bind("<Return>", lambda event: update_directory())
+
+# Fortschrittsanzeige
+progress_var = tk.DoubleVar()
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate", variable=progress_var)
-progress_bar.place_forget()
+progress_bar.pack_forget()
 
-# Aktualisiere die Dateiliste mit dem Startverzeichnis
+# Aktualisiere die Dateiliste
 update_file_list(current_directory)
-
-directory_tree.bind("<Button-3>", show_context_menu)
-
-style = ttk.Style()
-style.configure("Custom.TLabelframe", background="black")
-style.configure("Custom.TLabelframe.Label", background="red", foreground="black")
-
 
 # Kontextmenü erstellen
 context_menu = Menu(root, tearoff=0)
@@ -1449,18 +1693,23 @@ context_menu.add_command(label=texts['createFolder'], command=open_toplevel)
 context_menu.add_command(label=texts['Rename'], command=rename_toplevel)
 context_menu.add_separator()
 context_menu.add_command(label=texts['compress'], command=open_options_window)
-context_menu.add_command(label=texts['properties'], command=create_top_level) 
+context_menu.add_command(label=texts['properties'], command=create_top_level)
+
+# Das Menü mit einem Rechtsklick öffnen
+directory_tree.bind("<Button-3>", show_context_menu)
 
 # Erstelle einen Button, um in das vorherige Verzeichnis zu gehen
 back_button = tk.Button(root, text=texts['back'], command=on_back_button_click, bg="#666666", fg="white", font=("Arial", 12))
-back_button.pack(side="right",anchor="ne", padx=5)
+#back_button.pack(side="right",anchor="ne", padx=5)
 
-fast_save_button = tk.Button(root, text=texts['schnellesSichern'], command=open_fast_frame, bg="#666666", fg="white", font=("Arial", 12))
-fast_save_button.pack(side="right",anchor="ne", padx=5)
+Check_button()
 
 # Erstelle einen Button, um Dateien zu speichern
-save_button = tk.Button(root, text=texts['copy'], command=on_save_button_click, bg="#666666", fg="white", font=("Arial", 12))
-save_button.pack(side="right",anchor="ne", padx=5)
+
+
+
+#save_button = tk.Button(root, text="sync", command=execute_adb_sync, bg="#666666", fg="white", font=("Arial", 12))
+#save_button.pack(side="right",anchor="ne", padx=5)
 
 
 

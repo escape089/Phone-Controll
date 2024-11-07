@@ -10,10 +10,10 @@ import tkinter as tk
 from tkinter import messagebox, ttk, scrolledtext, filedialog
 import threading
 import time
+import adbutils
 from plyer import notification 
 import psutil
-from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
-from adb_shell.auth.sign_pythonrsa import PythonRSASigner
+from adbutils import adb
 import requests
 import zipfile
 import ctypes
@@ -25,26 +25,22 @@ ADB_URL = "https://dl.google.com/android/repository/platform-tools-latest-window
 ADB_FOLDER = "platform-tools"
 adb_path = r"platform-tools\adb.exe"
 
-import tkinter as tk
-import cv2
-from PIL import Image, ImageTk
-import threading
-import time
 
 class WelcomeVideoPlayer:
-    def __init__(self, video_path):
-        self.video_path = video_path  # Pfad zum Video
-        self.cap = None               # VideoCapture-Objekt
-        self.window = None            # Tkinter-Fenster
-        self.label = None             # Label für das Video
-        self.is_playing = False       # Flag für die Wiedergabe
+    def __init__(self, video_path, on_video_end):
+        self.video_path = video_path      # Pfad zum Video
+        self.cap = None                   # VideoCapture-Objekt
+        self.window = None                # Tkinter-Fenster
+        self.label = None                 # Label für das Video
+        self.is_playing = False           # Flag für die Wiedergabe
+        self.on_video_end = on_video_end  # Funktion, die nach dem Video ausgeführt wird
 
     def play(self):
         # Videoquelle öffnen
         self.cap = cv2.VideoCapture(self.video_path)
 
         if not self.cap.isOpened():
-            
+            print("Fehler: Video konnte nicht geöffnet werden.")
             return
 
         # Tkinter-Fenster erstellen ohne Titelleiste
@@ -90,99 +86,29 @@ class WelcomeVideoPlayer:
                 # Wartezeit für das nächste Frame
                 self.label.after(30, self.update_frame)  # Etwa 30 FPS
             else:
+                # Video zu Ende, Wiedergabe stoppen
                 self.is_playing = False
                 self.cap.release()
-                self.window.destroy()  # Schließe das Fenster, wenn das Video zu Ende ist
+                self.window.destroy()  # Schließe das Fenster
+                self.on_video_end()    # Hauptprogramm starten
 
 def load_main_program():
-    
-    time.sleep(2)
-    
+    pass
 
-# Hauptprogramm
 if __name__ == "__main__":
     video_path = r"img\Willkommen_Screen.mp4"  # Pfad zum Video
-    player = WelcomeVideoPlayer(video_path)
 
-    # Starte das Hauptprogramm im Hintergrund
-    main_program_thread = threading.Thread(target=load_main_program)
-    main_program_thread.start()
+    # Erstellen des WelcomeVideoPlayer mit Callback für das Hauptprogramm
+    player = WelcomeVideoPlayer(video_path, load_main_program)
 
-    # Spiele den Willkommensbildschirm ab
+    # Starten Sie das Willkommensvideo
     player.play()
 
-    # Warten, bis das Hauptprogramm geladen wurde
-    main_program_thread.join()
-
-    
 
 
 
 
-class WelcomeVideoPlayer:
-    def __init__(self, video_path, main_ui):
-        self.video_path = video_path       # Pfad zum Video
-        self.main_ui = main_ui             # Instanz der Hauptklasse
-        self.cap = None                    # VideoCapture-Objekt
-        self.window = None                 # Tkinter-Fenster
-        self.label = None                  # Label für das Video
-        self.is_playing = False            # Flag für die Wiedergabe
-
-    def play(self):
-        # Videoquelle öffnen
-        self.cap = cv2.VideoCapture(self.video_path)
-
-        if not self.cap.isOpened():
-            
-            return
-
-        # Tkinter-Fenster erstellen ohne Titelleiste
-        self.window = tk.Tk()
-        self.window.overrideredirect(True)  # Fenster ohne Titel und Rahmen
-
-        # Berechne die Bildschirmgröße
-        screen_width = self.window.winfo_screenwidth()
-        screen_height = self.window.winfo_screenheight()
-
-        # Setze die Größe des Fensters auf die Video-Größe
-        video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        # Setze die Fensterposition auf die Mitte des Bildschirms
-        x = (screen_width // 2) - (video_width // 2)
-        y = (screen_height // 2) - (video_height // 2)
-        self.window.geometry(f"{video_width}x{video_height}+{x}+{y}")
-
-        # Label für das Video
-        self.label = tk.Label(self.window)
-        self.label.pack(fill=tk.BOTH, expand=True)  # Fülle den gesamten Bereich
-
-        # Start der Video-Wiedergabe
-        self.is_playing = True
-        self.update_frame()
-        self.window.mainloop()
-
-    def update_frame(self):
-        if self.is_playing:
-            ret, frame = self.cap.read()
-            if ret:
-                # Frame von BGR nach RGB konvertieren
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                # Frame in ein Bild umwandeln
-                img = Image.fromarray(frame)
-                imgTk = ImageTk.PhotoImage(image=img)
-
-                # Bild im Label aktualisieren
-                self.label.imgTk = imgTk  # Referenz halten, um Garbage Collection zu vermeiden
-                self.label.configure(image=imgTk)
-
-                # Wartezeit für das nächste Frame
-                self.label.after(30, self.update_frame)  # Etwa 30 FPS
-            else:
-                self.is_playing = False
-                self.cap.release()
-                self.window.destroy()  # Schließe das Fenster, wenn das Video zu Ende ist
-                self.main_ui.show() 
+                
 
 class PlaceholderEntry(tk.Entry):
     def __init__(self, master=None, placeholder="", validate_func=None, **kwargs):
@@ -193,6 +119,7 @@ class PlaceholderEntry(tk.Entry):
         self.bind("<FocusIn>", self.clear_placeholder)
         self.bind("<FocusOut>", self.set_placeholder)
         self.set_placeholder()  # Setze den Platzhalter beim Start
+        self.adb = adbutils.AdbClient(host="127.0.0.1", port=5037)
 
         self.validate_command = master.register(self.validate_input)
 
@@ -216,7 +143,7 @@ class PlaceholderEntry(tk.Entry):
         if self.placeholder_active:
             return True  # Wenn der Placeholder aktiv ist, keine Validierung durchführen
         if self.validate_func:
-            return self.validate_func(new_value)  # Validierung auf Zahlen durchführen
+            pass  # Validierung auf Zahlen durchführen
         return True
 
 
@@ -224,7 +151,8 @@ class PlaceholderEntry(tk.Entry):
 class TWRPBackupRestoreApp:
     CONFIG_FILE = "config.json" 
 
-    def __init__(self, master):
+    def __init__(self, master, command_on_connect):
+        self.adb = adbutils.AdbClient(host="127.0.0.1", port=5037) 
         self.master = master
         self.master.title("Phone Controll - Home")
         self.master.geometry("1000x740")
@@ -232,10 +160,15 @@ class TWRPBackupRestoreApp:
         self.apktool_path = r"apktool.jar"
 
 
+
+
         
-        self.icon = PhotoImage(file="img/android.png")  # Pfad zu deinem Icon-Bild
-        self.master.iconphoto(False, self.icon)
+        self.windows_icon_g = PhotoImage(file="img/android.png")  # Pfad zu deinem Icon-Bild
+        self.master.iconphoto(False, self.windows_icon_g)
         
+        self.windows_icon_r = PhotoImage(file="img/android_red.png")  # Pfad zu deinem Icon-Bild
+        self.master.iconphoto(False, self.windows_icon_r)
+
         self.adb_path = r"platform-tools\adb.exe"
 
         self.bundletool_path = r"bundletool.jar"
@@ -244,6 +177,11 @@ class TWRPBackupRestoreApp:
         self.device_label = None
 
         self.api_url = "https://api.github.com/repos/escape089/Phone-Controll/releases/latest"
+        token = "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"
+
+        self.headers = {"Authorization": f"token {token}"}
+        
+        
         
         # Lokale Datei zum Speichern der aktuellen Version
         self.settings_file = "config.json"
@@ -731,13 +669,13 @@ class TWRPBackupRestoreApp:
         self.Reboot_to_OS = tk.Button(self.reboot_options_frame, text="", command=self.reboot_to_OS)
         self.Reboot_to_OS.pack(side="top",pady=5)
 
-        self.Reboot_to_Recovery = tk.Button(self.reboot_options_frame, text="", command=self.reboot_to_Recovery)
+        self.Reboot_to_Recovery = tk.Button(self.reboot_options_frame, text="", command=self.reboot_to_recovery)
         self.Reboot_to_Recovery.pack(side="top",pady=5)
 
-        self.Reboot_to_fastboot = tk.Button(self.reboot_options_frame, text="", command=self.restart_to_fastboot)
+        self.Reboot_to_fastboot = tk.Button(self.reboot_options_frame, text="", command=self.reboot_to_fastboot)
         self.Reboot_to_fastboot.pack(side="top",pady=5)
 
-        self.Reboot_to_bootlaoder = tk.Button(self.reboot_options_frame, text="", command=self.reboot_to_Bootloader)
+        self.Reboot_to_bootlaoder = tk.Button(self.reboot_options_frame, text="", command=self.reboot_to_bootloader)
         self.Reboot_to_bootlaoder.pack(side="top",pady=5)
 
         self.partition_flash_frame = ttk.LabelFrame(self.fastboot_frame, text="")
@@ -950,6 +888,12 @@ class TWRPBackupRestoreApp:
                                 "/data/systemgatekeeper.pin.key", "/data/system/gatekeeper.pattern.key", "/data/system/*.key", "/data/system/applockpin.key"]  # Hier Dateipfade anpassen
         self.update_texts()
         
+        self.device_connected = False
+        self.command_on_connect = command_on_connect  # Der auszuführende Befehl bei neuer Verbindung
+        self.device = None
+        self.checking_thread = threading.Thread(target=self.check_device_status)
+        self.checking_thread.daemon = True  # Damit der Thread automatisch endet, wenn das Programm endet
+        self.checking_thread.start()
         
 
         if self.settings.get("update_preference", self.texts['manuel']) == self.texts['auto']:
@@ -965,7 +909,7 @@ class TWRPBackupRestoreApp:
                 "current_version": "1.0",
                 "update_preference": "Manuell"
             }
-            with open(self.settings_file, "w") as file:
+            with open(self.settings_file, "r+") as file:
                 json.dump(self.settings, file, indent=4)
                 
 
@@ -1011,6 +955,34 @@ class TWRPBackupRestoreApp:
         self.version_label.place(relx=0.01, rely=0.8)  # Positioniere das Label weiter unten
 
 
+    def check_device_status(self):
+        """Überprüft alle 5 Sekunden, ob ein Gerät verbunden oder getrennt ist."""
+        while True:
+            devices = adbutils.adb.device_list()
+            if devices:  # Gerät ist verbunden
+                if not self.device_connected:  # Gerät war vorher getrennt
+                    self.device_connected = True
+                    self.device = devices[0]  # Verwende das erste verbundene Gerät
+                    print("Gerät verbunden:", self.device.serial)
+                    self.change_icon()
+                    # Befehl ausführen, wenn Gerät neu verbunden ist
+                    result = self.device.shell(self.command_on_connect)
+                    print("Befehl ausgeführt:", result.strip())
+            else:  # Kein Gerät verbunden
+                if self.device_connected:  # Gerät war vorher verbunden
+                    self.device_connected = False
+                    self.device = None
+                    print("Gerät wurde getrennt.")
+                    self.change_icon2()
+            time.sleep(5)  # 5 Sekunden warten, bevor der Status erneut überprüft wird
+
+    def change_icon(self):
+        self.master.iconphoto(False, self.windows_icon_g)
+
+
+    def change_icon2(self):
+        self.master.iconphoto(False, self.windows_icon_r)
+
     def update_preference_changed(self, event):
         selected_preference = self.update_combo.get()
         self.settings["update_preference"] = selected_preference
@@ -1023,31 +995,42 @@ class TWRPBackupRestoreApp:
 
     def check_for_updates(self):
         try:
-            response = requests.get(self.api_url)
-            response.raise_for_status()
-            release_data = response.json()
+            # Setze den Token in die Header
+
             
+            response = requests.get(self.api_url, headers=self.headers)
+            response.raise_for_status()  # Prüfe auf HTTP-Fehler
+            release_data = response.json()
+
             latest_version = release_data["tag_name"]
             assets = release_data["assets"]
             exe_url = None
             exe_name = None
-            
+
+            # Suche nach der .exe-Datei
             for asset in assets:
                 if asset["name"].endswith(".exe"):
                     exe_url = asset["browser_download_url"]
                     exe_name = asset["name"]
                     break
-            
+
             if not exe_url:
                 messagebox.showerror(self.texts['error1'], self.texts['no_exe_found'])
                 return
-            
+
+            # Vergleiche die Versionen
             if latest_version > self.settings.get("current_version", "1.0"):
                 self.prompt_update(latest_version, exe_url, exe_name)
             elif self.settings.get("update_preference", "Manuell") == "Manuell":
-                messagebox.showinfo(self.texts['"Update-Check"'], self.texts['up_todated'])
+                messagebox.showinfo(self.texts['Update-Check'], f"{self.texts['up_todated']} - Version {self.current_version}")
+
+        except requests.exceptions.HTTPError as http_err:
+            messagebox.showerror(self.texts['error1'], f"HTTP-error: {http_err}")
+        except requests.exceptions.RequestException as req_err:
+            messagebox.showerror(self.texts['error1'], f"{req_err}")
         except Exception as e:
             messagebox.showerror(self.texts['error1'], f"{self.texts['error3']} {e}")
+
 
     def prompt_update(self, latest_version, exe_url, exe_name):
         if messagebox.askyesno(self.texts['update_verfügbar'], f"{self.texts['Version']} {latest_version} {self.texts['quest']}"):
@@ -1129,18 +1112,7 @@ class TWRPBackupRestoreApp:
         seconds = int(seconds % 60)
         return f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
 
-    def get_device():
-        # Hier werden private und öffentliche Schlüssel für die ADB-Verbindung geladen oder erstellt
-        with open('adbkey', 'rb') as f:
-            priv = f.read()
-        with open('adbkey.pub', 'rb') as f:
-            pub = f.read()
-        signer = PythonRSASigner(pub, priv)
 
-        # Verbindung zum Gerät herstellen (USB)
-        device = AdbDeviceUsb()
-        device.connect(rsa_keys=[signer], auth_timeout_s=10)
-        return device
 
     # Auswahl des Boot-Image-Pfads
     def select_boot_image(self):
@@ -1248,35 +1220,56 @@ class TWRPBackupRestoreApp:
         """Starte den gesamten Flash-Prozess in einem Hintergrund-Thread."""
         threading.Thread(target=self.flash_zip_in_recovery, daemon=True).start()
 
+
     def flash_zip_in_recovery(self):
         """Überprüfen, ob das Gerät im Recovery-Modus ist, und gegebenenfalls neu starten."""
         recovery_mode_detected = False
 
         while not recovery_mode_detected:
             try:
-                # Prüfen, ob das Gerät im Recovery-Modus ist
-                command = f"{adb_path} shell getprop ro.boot.mode"
-                boot_mode = subprocess.check_output(command, shell=True).decode('utf-8').strip()
+                # Führe 'adb devices' aus, um das Gerät zu überprüfen
+                devices_output = subprocess.run([self.adb_path, "devices"], capture_output=True, text=True)
+                
+                # Überprüfen, ob Geräte verbunden sind
+                if "device" not in devices_output.stdout:
+                    self.console_output.insert(tk.END, "Kein Gerät gefunden. Bitte verbinden.\n")
+                    time.sleep(5)
+                    continue
 
-                if boot_mode == "":
-                    self.console_output.insert(tk.END, "Das Gerät ist jetzt im Recovery-Modus.\n")
-                    recovery_mode_detected = True
-                    break  # Beende die Schleife, wenn der Recovery-Modus erkannt wird
+                # Führe 'adb get-state' aus, um den aktuellen Zustand des Geräts zu überprüfen
+                state_check_output = subprocess.run([self.adb_path, "get-state"], capture_output=True, text=True)
+                state_check = state_check_output.stdout.strip()
 
+                if state_check == "device":
+                    # Gerät ist verbunden und online
+                    boot_mode_check_output = subprocess.run([self.adb_path, "shell", "getprop", "ro.boot.mode"], capture_output=True, text=True)
+                    boot_mode_check = boot_mode_check_output.stdout.strip()
+
+                    if boot_mode_check.lower() == "recovery":
+                        self.console_output.insert(tk.END, "Das Gerät ist jetzt im Recovery-Modus.\n")
+                        recovery_mode_detected = True
+                        self.select_zip_file()
+                    else:
+                        # Wenn das Gerät nicht im Recovery-Modus ist, starte es in den Recovery-Modus
+                        self.console_output.insert(tk.END, "Reboot in den Recovery-Modus...\n")
+                        subprocess.run([self.adb_path, "reboot", "recovery"])
+                        self.console_output.insert(tk.END, "Warten auf Recovery-Start...\n")
+                        time.sleep(15)
                 else:
-                    self.console_output.insert(tk.END, "Das Gerät ist nicht im Recovery-Modus. Starte im Recovery...\n")
-                    subprocess.run("adb reboot recovery", shell=True)
-                    self.console_output.insert(tk.END, "Bitte warten Sie, bis das Gerät neu gestartet ist...\n")
-                    time.sleep(15)  # Warte, damit das Gerät Zeit hat, neu zu starten
-                    continue  # Überprüfe weiter, ohne die Schleife zu beenden
+                    self.console_output.insert(tk.END, f"Gerät im Zustand {state_check}. Versuche es erneut...\n")
+                    time.sleep(5)
 
-            except subprocess.CalledProcessError:
-                # Ignoriere den Fehler und mache mit der nächsten Überprüfung weiter
-                self.console_output.insert(tk.END, "Fehler beim Abrufen des Boot-Modus. Überprüfe erneut...\n")
-                time.sleep(5)  # Überprüfen alle 5 Sekunden
+            except subprocess.CalledProcessError as e:
+                # Fehler, wenn der ADB-Befehl fehlschlägt
+                self.console_output.insert(tk.END, f"Fehler beim Ausführen von ADB: {str(e)}\n")
+                time.sleep(5)
 
-        if recovery_mode_detected:
-            self.select_zip_file()
+            except Exception as e:
+                # Allgemeine Fehlerbehandlung
+                self.console_output.insert(tk.END, f"Fehler: {str(e)}\n")
+                time.sleep(5)
+            
+
 
     def select_zip_file(self):
         """Wähle die ZIP-Datei aus, die geflasht werden soll."""
@@ -1287,33 +1280,50 @@ class TWRPBackupRestoreApp:
     def copy_and_flash(self, zip_file):
         """Kopiert die ZIP-Datei auf das Gerät und flasht sie."""
         try:
+            # Verbinde mit dem ersten verfügbaren Gerät (über subprocess, falls erforderlich)
+            devices_output = subprocess.run([self.adb_path, "devices"], capture_output=True, text=True)
+            
+            # Überprüfen, ob Geräte verbunden sind
+            if "device" not in devices_output.stdout:
+                self.console_output.insert(tk.END, "Kein Gerät gefunden. Bitte verbinden.\n")
+                return
+
             # Pfad zur ZIP-Datei bestimmen
             zip_file_name = zip_file.split('/')[-1]
             destination_path = f"/sdcard/{zip_file_name}"
 
+            # Formatierung starten (wenn nötig, ansonsten entferne diese Zeile)
             self.format_data()
 
             # Kopiere die ZIP-Datei auf das Gerät
-            self.console_output.insert(tk.END, f"Kopiere {zip_file_name} auf das Gerät...\n")
-            subprocess.run(f"{adb_path} push \"{zip_file}\" \"{destination_path}\"", shell=True)
+            self.console_output.insert(tk.END, f"Kopiere {zip_file_name}...\n")
+            push_output = subprocess.run([self.adb_path, "push", zip_file, destination_path], capture_output=True, text=True)
+            if push_output.returncode != 0:
+                self.console_output.insert(tk.END, f"Fehler beim Kopieren der Datei: {push_output.stderr}\n")
+                return
 
             # Flashen der ZIP-Datei über TWRP
             self.console_output.insert(tk.END, f"Flashe {zip_file_name}...\n")
-            subprocess.run(f"{adb_path} shell twrp install \"{destination_path}\"", shell=True)
+            flash_output = subprocess.run([self.adb_path, "shell", f"twrp install \"{destination_path}\""], capture_output=True, text=True)
+            if flash_output.returncode != 0:
+                self.console_output.insert(tk.END, f"Fehler beim Flashen: {flash_output.stderr}\n")
+                return
 
-            self.console_output.insert(tk.END, "Flashing abgeschlossen!\n")
+            # Abschlussmeldung
+            self.console_output.insert(tk.END, "Flashing finished!\n")
 
+            # Öffne das Toplevel-Fenster (falls benötigt)
             self.open_toplevel()
 
         except subprocess.CalledProcessError as e:
-            self.console_output.insert(tk.END, f"Fehler beim Kopieren oder Flashen der Datei: {e}\n")
+            self.console_output.insert(tk.END, f"Fehler beim Ausführen von ADB: {str(e)}\n")
         except Exception as e:
-            self.console_output.insert(tk.END, f"Ein Fehler ist aufgetreten: {str(e)}\n")
+            self.console_output.insert(tk.END, f"Fehler: {str(e)}\n")
 
     def open_toplevel(self):
         # Toplevel-Fenster erstellen
-        toplevel = tk.Toplevel(self.root)
-        toplevel.title("Toplevel Fenster")
+        toplevel = tk.Toplevel()
+        toplevel.title("")
         toplevel.geometry("300x300")
 
         # Stil für die Buttons
@@ -1323,7 +1333,7 @@ class TWRPBackupRestoreApp:
         # Buttons erstellen
         button1 = ttk.Button(toplevel, text="Flash again", command=self.start_flashing_process)
         button2 = ttk.Button(toplevel, text="Reboot", command=self.reboot_to_OS)
-        button3 = ttk.Button(toplevel, text="Format Data", command=self.format_data)
+        button3 = ttk.Button(toplevel, text=self.texts['Daten löschen'], command=self.format_data)
         button4 = ttk.Button(toplevel, text="Wipe dalvik/cache", command=self.format_dalvik)
 
         # Buttons anordnen
@@ -1333,16 +1343,23 @@ class TWRPBackupRestoreApp:
         button4.pack(pady=10, padx=20, fill=tk.X)
 
     def format_data(self):
+        """Formatiert die Datenpartition nach Bestätigung des Nutzers."""
         # Bestätigungsdialog
-        if messagebox.askyesno("Empfohlen", "Sie sollten die Daten vor dem Flashen Formatieren"):
+        if messagebox.askyesno("Empfohlen", "Sie sollten die Daten vor dem Flashen formatieren."):
             try:
-                # ADB Befehl zum Formatieren der Datenpartition
-               
-                subprocess.run(f"{adb_path} shell twrp format /data", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                # Erfolgreich informiert
+                # ADB-Verbindung zum Gerät herstellen
+                device = adbutils.adb.device()  # Verbinde mit dem ersten verfügbaren Gerät
+                
+                # ADB-Befehl für das Formatieren der Datenpartition ausführen
+                output = device.shell("twrp format /data")  # Führt den Format-Befehl über TWRP aus
+                
+                # Überprüfe das Ergebnis und informiere den Nutzer
                 messagebox.showinfo("Erfolg", "Die Datenpartition wurde erfolgreich formatiert.")
+            
+            except adbutils.AdbError as e:
+                messagebox.showerror("Error", f"{e}")
             except Exception as e:
-                messagebox.showerror("Fehler", f"Fehler beim Formatieren der Datenpartition: {e}")
+                messagebox.showerror("Error", f"{str(e)}")
 
     def format_dalvik(self):
         # Bestätigungsdialog
@@ -2928,95 +2945,117 @@ class TWRPBackupRestoreApp:
 
     #########################################################################################
 
-
     def start_app(self, app):
         try:
-            selected_items = self.listbox_apks.selection()  # Holt die IDs der ausgewählten Elemente
+            # Überprüfe, ob eine App ausgewählt ist
+            selected_items = self.listbox_apks.selection()
             if not selected_items:
                 raise Exception("Keine App ausgewählt")
 
-            # Hier nehmen wir an, dass wir den ersten ausgewählten Eintrag verwenden möchten
-            selected_app_id = selected_items[0]  # Nimm die ID des ersten ausgewählten Elements
-            selected_app = self.listbox_apks.item(selected_app_id)['values'][0]  # Hier wird der Wert (z.B. Paketname) abgerufen
+            # Nimm den ersten ausgewählten Eintrag
+            selected_app_id = selected_items[0]
+            selected_app = self.listbox_apks.item(selected_app_id)['values'][0]
 
-            # ADB Befehl zum Starten der App
-            result = subprocess.run([adb_path, 'shell', 'monkey', '-p', selected_app, '-c', 'android.intent.category.LAUNCHER', '1'], capture_output=True, text=True)
-            if result.returncode == 0:
+            # Verbindung zu einem ADB-Gerät herstellen
+            device = adbutils.adb.device()  # Wählt das erste verbundene Gerät aus
+
+            # ADB-Befehl zum Starten der App
+            start_command = f"monkey -p {selected_app} -c android.intent.category.LAUNCHER 1"
+            result = device.shell(start_command)
+
+            # Überprüfe das Ergebnis
+            if "" in result:
                 self.console_output.insert(tk.END, f"{self.texts['start_erfolg']} {selected_app}\n")
             else:
                 self.console_output.insert(tk.END, f"{self.texts['start_error']} {selected_app}\n")
+
         except Exception as e:
-            self.console_output.insert(tk.END, str(e) + "\n")  # Fehlerausgabe an die Konsole
+            self.console_output.insert(tk.END, str(e) + "\n")
+
 
 
 
     def clear_data(self):
         """Löscht die Daten der ausgewählten App."""
         try:
-            # Abrufen der aktuell ausgewählten App im Treeview
+            # Überprüfen, ob eine App ausgewählt ist
             selected_item = self.listbox_apks.selection()
             if not selected_item:
                 raise Exception("Keine App ausgewählt")
 
             # Paketname aus dem Treeview extrahieren
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
-            command = f"{adb_path} shell pm clear {selected_app}"
 
-            # Ausführen des ADB-Befehls
-            result = subprocess.run(command.split(), capture_output=True, text=True)
-            
-            if result.returncode == 0:
+            # Verbindung zum Gerät herstellen
+            device = adbutils.adb.device()  # Verwendet das erste verbundene Gerät
+
+            # ADB-Befehl zum Löschen der App-Daten
+            command = f"pm clear {selected_app}"
+            result = device.shell(command)
+
+            # Ergebnis überprüfen
+            if "Success" in result:
                 self.console_output.insert(tk.END, f"{self.texts['del_data_erfolg']}\n")
             else:
                 self.console_output.insert(tk.END, f"{self.texts['del_data_error']}\n")
+
         except Exception as e:
-            self.console_output(tk.END, str(e))
+            self.console_output.insert(tk.END, str(e) + "\n")
 
 
-    def stop_app(self, app):
+    def stop_app(self):
+        """Stoppt die ausgewählte App."""
         try:
-            # Abrufen der aktuell ausgewählten App im Treeview
+            # Überprüfen, ob eine App ausgewählt ist
             selected_item = self.listbox_apks.selection()
             if not selected_item:
                 raise Exception("Keine App ausgewählt")
 
             # Paketname aus dem Treeview extrahieren
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
-            command = f"{adb_path} shell am force-stop {selected_app}"
 
-            # Ausführen des ADB-Befehls
-            result = subprocess.run(command.split(), capture_output=True, text=True)
-            
-            if result.returncode == 0:
+            # Verbindung zum Gerät herstellen
+            device = adbutils.adb.device()  # Verwendet das erste verbundene Gerät
+
+            # ADB-Befehl zum Stoppen der App
+            command = f"am force-stop {selected_app}"
+            result = device.shell(command)
+
+            # Überprüfen, ob der Befehl erfolgreich ausgeführt wurde
+            if result == "":
                 self.console_output.insert(tk.END, f"{self.texts['stop_app']}\n")
             else:
                 self.console_output.insert(tk.END, f"{self.texts['no_stop_app']}\n")
-                  # Fehler in der Konsole ausgeben
+
         except Exception as e:
-            self.console_output.insert(tk.END, str(e),"\n")
-              # Fehler in der Konsole ausgeben
+            self.console_output.insert(tk.END, f"{str(e)}\n")
 
     def clear_cache(self):
+        """Löscht den Cache der ausgewählten App."""
         try:
-            # Abrufen der aktuell ausgewählten App im Treeview
+            # Überprüfen, ob eine App ausgewählt ist
             selected_item = self.listbox_apks.selection()
             if not selected_item:
                 raise Exception("Keine App ausgewählt")
 
             # Paketname aus dem Treeview extrahieren
             selected_app = self.listbox_apks.item(selected_item)['values'][0]  # Annahme: Paketname ist der erste Wert
-            command = f"{adb_path} shell pm clear {selected_app}"
 
-            # Ausführen des ADB-Befehls
-            result = subprocess.run(command.split(), capture_output=True, text=True)
-            if result.returncode == 0:
+            # Verbindung zum Gerät herstellen
+            device = adbutils.adb.device()  # Verwendet das erste verbundene Gerät
+
+            # ADB-Befehl zum Löschen des Caches
+            command = f"pm clear {selected_app}"
+            result = device.shell(command)
+
+            # Ergebnisüberprüfung
+            if "Success" in result:
                 self.console_output.insert(tk.END, f"{self.texts['del_cache_erfolg']}\n")
             else:
-                self.console_output.insert(tk.END, f"{self.texts['del_cache_eror']}\n")
-                  # Fehler in der Konsole ausgeben
+                self.console_output.insert(tk.END, f"{self.texts['del_cache_error']}\n")
+
         except Exception as e:
-            self.console_output.insert(tk.END, str(e),"\n")
-             # Fehler in der Konsole ausgeben
+            self.console_output.insert(tk.END, f"{str(e)}\n")
 
     def backup_all_apkss(self):
         """Sichert alle installierten Benutzer-Apps (ohne System-Apps)."""
@@ -3644,78 +3683,80 @@ class TWRPBackupRestoreApp:
         """Aktualisiert die Scrollregion des Canvas."""
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-
-
-
-
-
     def device_info(self):
+        # Starte einen neuen Thread für das Laden der installierten Apps
+        threading.Thread(target=self.start_device_info).start()
+
+
+
+
+    def start_device_info(self):
         """Informationen vom Gerät abrufen und im Label anzeigen."""
         
         try:
+            # Verbindung zum Gerät herstellen
+            device = adbutils.adb.device()
+
             # Gesamtspeicher abrufen
-            storage = subprocess.check_output([adb_path, "shell", "df", "/data"], text=True)
+            storage = device.shell("df /data")
             lines = storage.strip().splitlines()
             if len(lines) > 1:
-                self.total_kb, used_kb, available_kb = map(int, lines[1].split()[1:4])
-                self.total_gb = self.total_kb / 1024 / 1024
+                total_kb, used_kb, available_kb = map(int, lines[1].split()[1:4])
+                self.total_gb = total_kb / 1024 / 1024
                 self.used_gb = used_kb / 1024 / 1024
                 self.available_gb = available_kb / 1024 / 1024
 
             # Android-Version abrufen
-            self.version = subprocess.check_output([adb_path, "shell", "getprop", "ro.build.version.release"], text=True).strip()
+            self.version = device.shell("getprop ro.build.version.release").strip()
 
             # Gerätemodell abrufen
-            self.model = subprocess.check_output([adb_path, "shell", "getprop", "ro.product.model"], text=True).strip()
+            self.model = device.shell("getprop ro.product.model").strip()
 
             # Hersteller abrufen
-            self.manufacturer = subprocess.check_output([adb_path, "shell", "getprop", "ro.product.manufacturer"], text=True).strip()
+            self.manufacturer = device.shell("getprop ro.product.manufacturer").strip()
 
-            # Prozessorarchitektur abrufen
-            self.cpu_abi = subprocess.check_output([adb_path, "shell", "getprop", "ro.product.cpu.abi"], text=True).strip()
-            self.cpu_cores = subprocess.check_output([adb_path, "shell", "nproc"], text=True).strip()
+            # Prozessorarchitektur und CPU-Kerne abrufen
+            self.cpu_abi = device.shell("getprop ro.product.cpu.abi").strip()
+            self.cpu_cores = device.shell("nproc").strip()
 
-            # RAM abrufen
-            self.ram_info = subprocess.check_output([adb_path, "shell", "cat", "/proc/meminfo"], text=True)
-            self.ram_lines = self.ram_info.strip().splitlines()
-            self.total_ram = int(self.ram_lines[0].split()[1]) / 1024  # MemTotal
-            self.free_ram = int(self.ram_lines[1].split()[1]) / 1024   # MemFree
-            self.available_ram = int(self.ram_lines[2].split()[1]) / 1024  # MemAvailable
+            # RAM-Informationen abrufen
+            ram_info = device.shell("cat /proc/meminfo")
+            ram_lines = ram_info.strip().splitlines()
+            self.total_ram = int(ram_lines[0].split()[1]) / 1024  # MemTotal
+            self.free_ram = int(ram_lines[1].split()[1]) / 1024   # MemFree
+            self.available_ram = int(ram_lines[2].split()[1]) / 1024  # MemAvailable
 
             # SIM-Karten-Informationen abrufen
-            self.sim_state = subprocess.check_output([adb_path, "shell", "getprop", "gsm.sim.state"], text=True).strip()
-            self.sim_host = subprocess.check_output([adb_path, "shell", "getprop", "gsm.sim.operator.alpha"], text=True).strip()
-            
+            self.sim_state = device.shell("getprop gsm.sim.state").strip()
+            self.sim_host = device.shell("getprop gsm.sim.operator.alpha").strip()
 
-            # Display-Infos
-            self.display_auflösung = subprocess.check_output([adb_path, "shell", "wm", "size"], text=True).strip()
-            self.pixeldichte = subprocess.check_output([adb_path, "shell", "wm", "density"], text=True).strip()
-            self.display_helligkeit = subprocess.check_output([adb_path, "shell", "settings", "get", "system", "screen_brightness"], text=True).strip()
+            # Display-Informationen abrufen
+            self.display_auflösung = device.shell("wm size").strip()
+            self.pixeldichte = device.shell("wm density").strip()
+            self.display_helligkeit = device.shell("settings get system screen_brightness").strip()
 
             # Bluetooth-Status abrufen
-            self.bluetooth_status = subprocess.check_output([adb_path, "shell", "settings", "get", "global", "bluetooth_on"], text=True).strip()
-            self.bluetooth_status = "Ein" if self.bluetooth_status == "1" else "Aus"
+            bluetooth_status = device.shell("settings get global bluetooth_on").strip()
+            self.bluetooth_status = "Ein" if bluetooth_status == "1" else "Aus"
 
             # Akku-Informationen abrufen
-            self.battery_info = subprocess.check_output([adb_path, "shell", "dumpsys", "battery"], text=True)
+            self.battery_info = device.shell("dumpsys battery")
 
-            # Audio-Infos (Lautstärkewerte)
-            self.audio_info = subprocess.check_output([adb_path, "shell", "dumpsys", "audio"], text=True)
-            
-            # Bluetooth-Geräte suchen
+            # Audio-Informationen abrufen (einschließlich verbundener Bluetooth-Geräte)
+            audio_info = device.shell("dumpsys audio")
             self.bluetooth_devices = []
-            for line in self.audio_info.splitlines():
+            for line in audio_info.splitlines():
                 if "mBluetoothName" in line:
                     match = re.search(r"mBluetoothName=(.+?)\s*\n", line)
                     if match:
                         device_name = match.group(1).strip()
                         self.bluetooth_devices.append(device_name)
 
-            # Informationen in das Label einfügen
+            # Informationen in das Label einfügen und Sprache aktualisieren
             self.update_label()
             self.switch_language()
 
-        except subprocess.CalledProcessError as e:
+        except adbutils.AdbError as e:
             pass
         except Exception as e:
             pass
@@ -4482,56 +4523,60 @@ class TWRPBackupRestoreApp:
                 self.load_apks()
 
 #######################################################################################################################################
-
     def reboot_to_OS(self):
-        # Starte den Flash-Vorgang in einem separaten Thread
-        threading.Thread(target=self.restart_to_OS).start()
-
-    def restart_to_OS(self):
-        result = subprocess.run([adb_path,'reboot'], capture_output=True, text=True)
-        self.console_output.insert(tk.END, f"Reboot\n")  
-
-    def restart_to_fastboot(self):
-        # Starte den Flash-Vorgang in einem separaten Thread
-        threading.Thread(target=self.reboot_to_fastboot).start()
+        device = self.get_device()
+        if device:
+            try:
+                self.append_console_output("Rebooting to OS...\n")
+                device.reboot()  # Standard-Neustart ins Betriebssystem ohne zusätzliche Argumente
+                self.append_console_output("Device rebooted to OS successfully.\n")
+            except Exception as e:
+                self.append_console_output(f"Error rebooting to OS: {str(e)}\n")
 
     def reboot_to_fastboot(self):
-        self.append_console_output("reboot Fastboot-Modus")
-          
-        command = [adb_path, 'reboot', 'fastboot']
+        device = self.get_device()
+        if device:
+            try:
+                self.append_console_output("Rebooting to Fastboot mode...\n")
+                device.shell("reboot fastboot")  # Direkt über shell-Befehl
+                self.append_console_output("Device rebooted to Fastboot mode successfully.\n")
+            except Exception as e:
+                self.append_console_output(f"Error rebooting to Fastboot mode: {str(e)}\n")
 
-        result = subprocess.run([adb_path,'reboot', 'fastboot'], capture_output=True, text=True)
+    def reboot_to_recovery(self):
+        device = self.get_device()
+        if device:
+            try:
+                self.append_console_output("Rebooting to Recovery mode...\n")
+                device.shell("reboot recovery")  # Direkt über shell-Befehl
+                self.append_console_output("Device rebooted to Recovery mode successfully.\n")
+            except Exception as e:
+                self.append_console_output(f"Error rebooting to Recovery mode: {str(e)}\n")
 
-        if result.returncode == 0:
-            pass
-        else:
-            self.append_console_output(f"Error: {result.stderr}\n")
+    def reboot_to_bootloader(self):
+        device = self.get_device()
+        if device:
+            try:
+                self.append_console_output("Rebooting to Recovery mode...\n")
+                device.shell("reboot recovery")  # Direkt über shell-Befehl
+                self.append_console_output("Device rebooted to Recovery mode successfully.\n")
+            except Exception as e:
+                self.append_console_output(f"Error rebooting to Recovery mode: {str(e)}\n")
+   
+    def get_device(self):
+        """Hilfsmethode, um das erste verbundene Gerät zu holen."""
+        try:
+            device = self.adb.device()  # Direktes Abrufen des verbundenen Geräts
+            if device:
+                return device  # Gibt das Gerät zurück, anstatt zu indizieren
+            else:
+                self.append_console_output("Kein Gerät verbunden.\n")
+                return None
+        except adbutils.AdbError as e:
+            self.append_console_output(f"Fehler beim Abrufen der Geräteinformationen: {str(e)}\n")
+            return None
 
-    def reboot_to_Bootloader(self):
-        # Starte den Flash-Vorgang in einem separaten Thread
-        threading.Thread(target=self.restart_to_Bootloader).start()
 
-    def restart_to_Bootloader(self):
-        # Befehl zum Neustarten in den Recovery-Modus
-        result = subprocess.run([adb_path, 'reboot', 'bootloader'], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            self.console_output.insert(tk.END, "Reboot\n")
-        else:
-            self.console_output.insert(tk.END, f"Error: {result.stderr}\n")
-
-    def reboot_to_Recovery(self):
-        # Starte den Flash-Vorgang in einem separaten Thread
-        threading.Thread(target=self.restart_to_Recovery).start()
-
-    def restart_to_Recovery(self):
-        # Befehl zum Neustarten in den Recovery-Modus
-        result = subprocess.run([adb_path, 'reboot', 'recovery'], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            self.console_output.insert(tk.END, "Reboot\n")
-        else:
-            self.console_output.insert(tk.END, f"Error: {result.stderr}\n")
 
 ###########################################################################################################################################
 
@@ -4753,7 +4798,7 @@ class TWRPBackupRestoreApp:
 
         except Exception as e:
             self.append_console_output(f"Error: {e}")
-            root.title("Online")
+            
     def append_console_output(self, message):
         self.console_output.insert(tk.END, message + "\n")  # Verwendung von insert
 
@@ -4763,7 +4808,7 @@ class TWRPBackupRestoreApp:
             self.is_countdown_running = True
             self.countdown_timer = 10
             self.append_console_output("Gerät offline oder nicht autorisiert. Versuche es in 10 Sekunden erneut.")
-            root.title("Online")
+            
             while self.countdown_timer > 0:
                 time.sleep(1)
                 self.countdown_timer -= 1
@@ -4907,39 +4952,48 @@ class TWRPBackupRestoreApp:
     def execute_restore(self):
         selected_files = [file for file, var in self.restore_files_vars.items() if var.get()]
         if selected_files:
-
-            
             self.append_console_output(f"{self.texts['restor_start']} {', '.join(selected_files)}")
+            
             for file in selected_files:
                 # Das erste Wort des Dateinamens extrahieren
                 first_word = file.split('_')[0]  # Angenommen, die Wörter sind durch Unterstriche getrennt
 
-                # Datei zuerst auf das Gerät kopieren
-                local_file_path = os.path.join(self.restore_folder_path)
-                remote_file_path = f"/sdcard/TWRP/BACKUPS/R92X538VD9N/{first_word}"  # Verwendung des ersten Wortes für den Remote-Pfad
-                create = (f"{adb_path} shell mkdir /sdcard/TWRP/BACKUPS/R92X538VD9N/")
-                result = subprocess.run(create, capture_output=True, text=True)
-                # Datei auf das Gerät übertragen
-                push_command = f"{adb_path} push {local_file_path} {remote_file_path}"
-                result = subprocess.run(push_command.split(), capture_output=True, text=True)
-                if result.returncode != 0:
-                    self.append_console_output(f"Error {file}: {result.stderr}")
-                    continue  # Fahren Sie mit der nächsten Datei fort
+                # Lokalen und Remote-Pfad definieren
+                local_file_path = os.path.join(self.restore_folder_path, file)  # Lokaler Pfad zur Datei
+                remote_file_path = f"/sdcard/TWRP/BACKUPS/R92X538VD9N/{first_word}"
 
-                # Hier wird der Wiederherstellungsbefehl ausgeführt
-                restore_command = f"{adb_path} shell twrp restore /sdcard/TWRP/BACKUPS/R92X538VD9N/"
-                result = subprocess.run(restore_command.split(), capture_output=True, text=True)
-                if result.returncode == 0:
+                try:
+                    # Erstellen des Remote-Verzeichnisses
+                    adb.shell("mkdir -p /sdcard/TWRP/BACKUPS/R92X538VD9N/")
+
+                    # Datei auf das Gerät übertragen
+                    adb.push(local_file_path, remote_file_path)
+
+                    # Hier wird der Wiederherstellungsbefehl ausgeführt
+                    adb.shell(f"twrp restore {remote_file_path}")
+
                     self.append_console_output(f"{file} {self.texts['restore_erfolg']}")
-                else:
-                    self.append_console_output(f"Error {file}: {result.stderr}")
+                except Exception as e:
+                    self.append_console_output(f"Error {file}: {str(e)}")
         else:
             self.append_console_output(f"{self.texts['no_file_select']}\n")
 
 
+
+
 if __name__ == "__main__":
+
+
+
     root = tk.Tk()
-    app = TWRPBackupRestoreApp(root)
-    root.mainloop()  
+    command_on_connect = "getprop ro.product.model"
+    app = TWRPBackupRestoreApp(root, command_on_connect)  # Erstelle die Instanz der App
+    root.mainloop()
     
 
+    
+
+
+    
+
+    

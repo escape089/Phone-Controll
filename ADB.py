@@ -5,6 +5,7 @@ import subprocess
 import sys
 from threading import Thread
 import os
+from dotenv import load_dotenv
 import re
 import tkinter as tk
 from tkinter import messagebox, ttk, scrolledtext, filedialog
@@ -175,13 +176,16 @@ class TWRPBackupRestoreApp:
        
         self.apps = []
         self.device_label = None
+        load_dotenv("img/.env")
 
-        self.api_url = "https://api.github.com/repos/escape089/Phone-Controll/releases/latest"
-        token = "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"
+
+        token = os.getenv("GITHUB_TOKEN")
+        self.api_url = os.getenv("API_KEY")
 
         self.headers = {"Authorization": f"token {token}"}
         
-        
+        print(f"GITHUB_TOKEN: {token}")
+        print(f"API_KEY: {self.api_url}")
         
         # Lokale Datei zum Speichern der aktuellen Version
         self.settings_file = "config.json"
@@ -1261,12 +1265,12 @@ class TWRPBackupRestoreApp:
 
             except subprocess.CalledProcessError as e:
                 # Fehler, wenn der ADB-Befehl fehlschlägt
-                self.console_output.insert(tk.END, f"Fehler beim Ausführen von ADB: {str(e)}\n")
+                self.console_output.insert(tk.END, f"{str(e)}\n")
                 time.sleep(5)
 
             except Exception as e:
                 # Allgemeine Fehlerbehandlung
-                self.console_output.insert(tk.END, f"Fehler: {str(e)}\n")
+                self.console_output.insert(tk.END, f"{self.texts['error1']}: {str(e)}\n")
                 time.sleep(5)
             
 
